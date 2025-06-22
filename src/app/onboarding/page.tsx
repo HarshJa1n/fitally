@@ -136,15 +136,22 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
-      // Create user profile
+      // Calculate date of birth from age
+      const currentYear = new Date().getFullYear();
+      const birthYear = currentYear - parseInt(profileData.age);
+      const dateOfBirth = `${birthYear}-01-01`; // Use January 1st as default
+
+      // Create user profile with all collected data
       await dbService.createOrUpdateProfile({
         id: user.id,
         email: user.email || '',
         full_name: profileData.full_name,
+        date_of_birth: dateOfBirth,
         height_cm: profileData.height_cm ? parseInt(profileData.height_cm) : null,
         weight_kg: profileData.weight_kg ? parseInt(profileData.weight_kg) : null,
-        fitness_goals: ['general_fitness'],
-        dietary_preferences: [],
+        activity_level: profileData.fitness_level as any, // Use fitness_level as activity_level
+        fitness_goals: profileData.health_goals.length > 0 ? profileData.health_goals : ['general_fitness'],
+        dietary_preferences: profileData.dietary_preferences,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
@@ -288,10 +295,12 @@ export default function OnboardingPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
-                  <option value="beginner">Beginner - Just starting out</option>
-                  <option value="intermediate">Intermediate - Some experience</option>
-                  <option value="advanced">Advanced - Very experienced</option>
-                  <option value="athlete">Athlete - Professional level</option>
+                  <option value="">Select fitness level</option>
+                  <option value="sedentary">Sedentary - Little/no exercise</option>
+                  <option value="lightly_active">Lightly Active - Light exercise 1-3 days/week</option>
+                  <option value="moderately_active">Moderately Active - Moderate exercise 3-5 days/week</option>
+                  <option value="very_active">Very Active - Hard exercise 6-7 days/week</option>
+                  <option value="extra_active">Extra Active - Very hard exercise, physical job</option>
                 </select>
               </div>
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, User, Target, Settings, Bell, Shield, Info, ChevronRight, Edit3, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dock } from "@/components/ui/dock-two";
 import { Calendar, Home, Plus, BarChart3 } from "lucide-react";
+import { DatabaseService } from "@/lib/supabase/database";
+import { createBrowserClient } from "@supabase/ssr";
+import type { Database, Profile } from "@/types/database";
 
 const dockItems = [
   { icon: Home, label: "Dashboard", onClick: () => window.location.href = "/" },
@@ -50,24 +53,27 @@ interface NotificationSettings {
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'goals' | 'settings'>('profile');
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [dbProfile, setDbProfile] = useState<Profile | null>(null);
 
   const [profile, setProfile] = useState<UserProfile>({
-    name: "Alex Johnson",
-    email: "alex@example.com",
-    age: "28",
-    height: "5'8\"",
-    weight: "150 lbs",
+    name: "",
+    email: "",
+    age: "",
+    height: "",
+    weight: "",
     activityLevel: "moderate",
-    fitnessGoals: ["weight-loss", "muscle-gain"],
-    bio: "Fitness enthusiast looking to maintain a healthy lifestyle with the help of AI tracking."
+    fitnessGoals: [],
+    bio: ""
   });
 
   const [goals, setGoals] = useState<UserGoals>({
-    dailyCalories: "1990",
+    dailyCalories: "2000",
     dailySteps: "10000",
     dailyWater: "8",
     weeklyWorkouts: "4",
-    targetWeight: "145"
+    targetWeight: "150"
   });
 
   const [notifications, setNotifications] = useState<NotificationSettings>({
@@ -78,10 +84,177 @@ export default function ProfilePage() {
     achievementAlerts: true
   });
 
-  const handleSave = () => {
-    // TODO: Save to backend/Supabase
-    setIsEditing(false);
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const supabase = createBrowserClient<Database>(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error('Error getting user:', userError);
+          window.location.href = '/login';
+          return;
+        }
+
+        setUser(user);
+
+        // Get user profile from database
+        const db = new DatabaseService();
+        const userProfile = await db.getUserProfile(user.id);
+        
+        if (userProfile) {
+          setDbProfile(userProfile);
+          
+          // Calculate age from date_of_birth
+          const calculateAge = (dateOfBirth: string | null) => {
+            if (!dateOfBirth) return "";
+            const today = new Date();
+            const birthDate = new Date(dateOfBirth);
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+              age--;
+            }
+            return age.toString();
+          };
+
+          // Convert weight from kg to lbs for display
+          const kgToLbs = (kg: number | null) => {
+            if (!kg) return "";
+            return Math.round(kg * 2.20462).toString();
+          };
+
+          // Convert height from cm to feet/inches for display
+          const cmToFeetInches = (cm: number | null) => {
+            if (!cm) return "";
+            const totalInches = cm / 2.54;
+            const feet = Math.floor(totalInches / 12);
+            const inches = Math.round(totalInches % 12);
+            return `${feet}'${inches}"`;
+          };
+
+          // Map database profile to form state
+          setProfile({
+            name: userProfile.full_name || "",
+            email: user.email || "",
+            age: calculateAge(userProfile.date_of_birth),
+            height: cmToFeetInches(userProfile.height_cm),
+            weight: kgToLbs(userProfile.weight_kg),
+            activityLevel: userProfile.activity_level || "moderately_active",
+            fitnessGoals: userProfile.fitness_goals || [],
+            bio: "" // bio field doesn't exist in schema, using empty string
+          });
+
+          // Set default goals since these aren't in the schema yet
+          setGoals({
+            dailyCalories: "2000", // Default value
+            dailySteps: "10000", // Default value
+            dailyWater: "8", // Default value  
+            weeklyWorkouts: "4", // Default value
+            targetWeight: "" // Default empty
+          });
+        } else {
+          // No profile found, redirect to onboarding
+          window.location.href = '/onboarding';
+          return;
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, []);
+
+  const handleSave = async () => {
+    if (!user || !dbProfile) return;
+
+    try {
+      setLoading(true);
+      const db = new DatabaseService();
+
+      // Helper functions for converting back to metric
+      const lbsToKg = (lbs: string) => {
+        const pounds = parseFloat(lbs);
+        if (!pounds) return null;
+        return Math.round((pounds / 2.20462) * 100) / 100; // Round to 2 decimal places
+      };
+
+      const feetInchesToCm = (feetInches: string) => {
+        const match = feetInches.match(/(\d+)'(\d+)"/);
+        if (!match) return null;
+        const feet = parseInt(match[1]);
+        const inches = parseInt(match[2]);
+        return Math.round((feet * 12 + inches) * 2.54);
+      };
+
+      const ageToDateOfBirth = (age: string) => {
+        const ageNum = parseInt(age);
+        if (!ageNum) return null;
+        const currentYear = new Date().getFullYear();
+        const birthYear = currentYear - ageNum;
+        return `${birthYear}-01-01`; // Use January 1st as default
+      };
+
+      const updatedProfile = {
+        id: user.id,
+        email: user.email!, // Required field
+        full_name: profile.name || null,
+        date_of_birth: ageToDateOfBirth(profile.age),
+        height_cm: feetInchesToCm(profile.height),
+        weight_kg: lbsToKg(profile.weight),
+        activity_level: profile.activityLevel as any,
+        fitness_goals: profile.fitnessGoals,
+        updated_at: new Date().toISOString()
+      };
+
+      const result = await db.createOrUpdateProfile(updatedProfile);
+      
+      if (result) {
+        setDbProfile(result);
+        setIsEditing(false);
+        console.log('Profile updated successfully');
+      } else {
+        console.error('Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !dbProfile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-4">Profile Not Found</h2>
+          <p className="text-gray-600 mb-4">Please complete your onboarding first.</p>
+          <Button onClick={() => window.location.href = '/onboarding'}>
+            Complete Onboarding
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const renderProfileTab = () => (
     <div className="space-y-6">
@@ -91,23 +264,26 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4 mb-6">
             <div className="w-20 h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
               <span className="text-white text-2xl font-bold">
-                {profile.name.split(' ').map(n => n[0]).join('')}
+                {profile.name ? profile.name.split(' ').map(n => n[0]).join('') : user.email?.[0]?.toUpperCase()}
               </span>
             </div>
             <div className="flex-1">
-              <h2 className="text-2xl font-bold">{profile.name}</h2>
+              <h2 className="text-2xl font-bold">{profile.name || 'User'}</h2>
               <p className="text-muted-foreground">{profile.email}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                {profile.age} years • {profile.height} • {profile.weight}
+                {profile.age && `${profile.age} years`}
+                {profile.height && ` • ${profile.height}`}
+                {profile.weight && ` • ${profile.weight} lbs`}
               </p>
             </div>
             <Button
               variant={isEditing ? "default" : "outline"}
               size="sm"
-              onClick={() => setIsEditing(!isEditing)}
+              onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+              disabled={loading}
             >
               {isEditing ? <Save className="w-4 h-4 mr-2" /> : <Edit3 className="w-4 h-4 mr-2" />}
-              {isEditing ? "Save" : "Edit"}
+              {loading ? 'Saving...' : isEditing ? "Save" : "Edit"}
             </Button>
           </div>
 
@@ -129,7 +305,10 @@ export default function ProfilePage() {
                     type="email"
                     value={profile.email}
                     onChange={(e) => setProfile({...profile, email: e.target.value})}
+                    disabled
+                    className="opacity-50"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Email cannot be changed here</p>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
@@ -137,6 +316,7 @@ export default function ProfilePage() {
                   <Label htmlFor="age">Age</Label>
                   <Input
                     id="age"
+                    type="number"
                     value={profile.age}
                     onChange={(e) => setProfile({...profile, age: e.target.value})}
                   />
@@ -147,12 +327,14 @@ export default function ProfilePage() {
                     id="height"
                     value={profile.height}
                     onChange={(e) => setProfile({...profile, height: e.target.value})}
+                    placeholder="e.g., 5'8&quot;"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="weight">Weight</Label>
+                  <Label htmlFor="weight">Weight (lbs)</Label>
                   <Input
                     id="weight"
+                    type="number"
                     value={profile.weight}
                     onChange={(e) => setProfile({...profile, weight: e.target.value})}
                   />
@@ -166,10 +348,10 @@ export default function ProfilePage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sedentary">Sedentary (little/no exercise)</SelectItem>
-                    <SelectItem value="light">Light (light exercise 1-3 days/week)</SelectItem>
-                    <SelectItem value="moderate">Moderate (moderate exercise 3-5 days/week)</SelectItem>
-                    <SelectItem value="active">Active (hard exercise 6-7 days/week)</SelectItem>
-                    <SelectItem value="very-active">Very Active (very hard exercise, physical job)</SelectItem>
+                    <SelectItem value="lightly_active">Lightly Active (light exercise 1-3 days/week)</SelectItem>
+                    <SelectItem value="moderately_active">Moderately Active (moderate exercise 3-5 days/week)</SelectItem>
+                    <SelectItem value="very_active">Very Active (hard exercise 6-7 days/week)</SelectItem>
+                    <SelectItem value="extra_active">Extra Active (very hard exercise, physical job)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -189,40 +371,28 @@ export default function ProfilePage() {
                 <h3 className="font-semibold mb-2">Activity Level</h3>
                 <p className="text-sm text-muted-foreground capitalize">{profile.activityLevel.replace('-', ' ')}</p>
               </div>
-              <div className="mb-4">
-                <h3 className="font-semibold mb-2">Fitness Goals</h3>
-                <div className="flex gap-2 flex-wrap">
-                  {profile.fitnessGoals.map((goal) => (
-                    <span key={goal} className="px-3 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-full text-sm">
-                      {goal.replace('-', ' ')}
-                    </span>
-                  ))}
+              {profile.fitnessGoals.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="font-semibold mb-2">Fitness Goals</h3>
+                  <div className="flex gap-2 flex-wrap">
+                    {profile.fitnessGoals.map((goal) => (
+                      <span key={goal} className="px-3 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-full text-sm">
+                        {goal.replace('-', ' ')}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Bio</h3>
-                <p className="text-sm text-muted-foreground">{profile.bio}</p>
-              </div>
+              )}
+              {profile.bio && (
+                <div>
+                  <h3 className="font-semibold mb-2">Bio</h3>
+                  <p className="text-sm text-muted-foreground">{profile.bio}</p>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Statistics Overview */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">127</div>
-            <div className="text-sm text-muted-foreground">Days Active</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">89%</div>
-            <div className="text-sm text-muted-foreground">Goal Achievement</div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 

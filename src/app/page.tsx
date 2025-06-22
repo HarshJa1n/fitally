@@ -106,6 +106,13 @@ export default function Dashboard() {
 
         // Load user profile
         const userProfile = await dbService.getUserProfile(user.id);
+        
+        // If no profile exists or user hasn't completed onboarding, redirect
+        if (!userProfile || !userProfile.full_name) {
+          window.location.href = '/onboarding';
+          return;
+        }
+        
         setProfile(userProfile);
 
         // Load recent activities
@@ -225,7 +232,7 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold mb-4">Welcome to Fitally</h1>
           <p className="text-gray-600 mb-4">Please sign in to view your dashboard</p>
           <button 
-            onClick={() => window.location.href = '/auth/login'} 
+            onClick={() => window.location.href = '/login'} 
             className="px-4 py-2 bg-blue-600 text-white rounded-lg"
           >
             Sign In
