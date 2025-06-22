@@ -1,15 +1,31 @@
 {
-  "name": "Fitally",
+  "name": "Fitally - AI Health Tracker",
   "short_name": "Fitally",
-  "description": "AI-Powered Health Tracking",
+  "description": "Your personal AI health companion. Track activities with photos, voice, and text.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/favicon.ico",
-      "sizes": "256x256",
+      "sizes": "48x48",
       "type": "image/x-icon"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "512x512",
+      "type": "image/png"
     }
-  ]
+  ],
+  "categories": ["health", "fitness", "lifestyle"],
+  "lang": "en",
+  "scope": "/"
 } 

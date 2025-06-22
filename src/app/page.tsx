@@ -1,52 +1,14 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Calendar, Home, Plus, BarChart3, User } from "lucide-react";
 import { Dock } from "@/components/ui/dock-two";
 import { ActivityCard } from "@/components/ui/activity-card";
 import { Timeline } from "@/components/ui/timeline";
 import { Card } from "@/components/ui/card";
-
-// Mock data for timeline
-const timelineData = [
-  {
-    title: "8:30 AM",
-    content: (
-      <div className="flex items-center gap-3 py-2">
-        <span className="text-2xl">🥣</span>
-        <div>
-          <h4 className="font-medium">Breakfast</h4>
-          <p className="text-sm text-muted-foreground">Oatmeal with berries</p>
-          <p className="text-xs text-orange-600 font-medium">350 cal</p>
-        </div>
-      </div>
-    )
-  },
-  {
-    title: "7:00 AM", 
-    content: (
-      <div className="flex items-center gap-3 py-2">
-        <span className="text-2xl">🏃‍♀️</span>
-        <div>
-          <h4 className="font-medium">Morning Run</h4>
-          <p className="text-sm text-muted-foreground">30 minutes in the park</p>
-          <p className="text-xs text-orange-600 font-medium">300 cal</p>
-        </div>
-      </div>
-    )
-  },
-  {
-    title: "6:30 AM",
-    content: (
-      <div className="flex items-center gap-3 py-2">
-        <span className="text-2xl">💧</span>
-        <div>
-          <h4 className="font-medium">Hydration</h4>
-          <p className="text-sm text-muted-foreground">2 glasses of water</p>
-        </div>
-      </div>
-    )
-  }
-];
+import { dbService } from "@/lib/supabase/database";
+import { createBrowserClient } from "@supabase/ssr";
+import type { Database, HealthActivity, Profile } from "@/types/database";
 
 const dockItems = [
   { icon: Home, label: "Dashboard", onClick: () => {} },
@@ -78,18 +40,201 @@ function SimpleCard({ title, value, subtitle, trend, className }: {
   );
 }
 
+// AI Suggestion Component
+function AISuggestion({ type, title, description, priority }: {
+  type: string;
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high';
+}) {
+  const getIcon = () => {
+    switch (type) {
+      case 'workout': return '🏃‍♂️';
+      case 'meal': return '🥗';
+      case 'hydration': return '💧';
+      case 'rest': return '😴';
+      case 'supplement': return '💊';
+      default: return '💡';
+    }
+  };
+
+  const getPriorityColor = () => {
+    switch (priority) {
+      case 'high': return 'bg-red-50 dark:bg-red-900/20';
+      case 'medium': return 'bg-yellow-50 dark:bg-yellow-900/20';
+      default: return 'bg-blue-50 dark:bg-blue-900/20';
+    }
+  };
+
+  return (
+    <div className={`flex items-start gap-3 p-3 rounded-lg ${getPriorityColor()}`}>
+      <span className="text-lg">{getIcon()}</span>
+      <div>
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [activities, setActivities] = useState<HealthActivity[]>([]);
+  const [dailyStats, setDailyStats] = useState<any>(null);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initializeDashboard = async () => {
+      try {
+        // Check authentication
+        const supabase = createBrowserClient<Database>(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+          // Redirect to auth or show unauthenticated state
+          console.log('No user found, showing guest view');
+          setLoading(false);
+          return;
+        }
+
+        setUser(user);
+
+        // Load user profile
+        const userProfile = await dbService.getUserProfile(user.id);
+        setProfile(userProfile);
+
+        // Load recent activities
+        const recentActivities = await dbService.getHealthActivities(user.id, 10);
+        setActivities(recentActivities);
+
+        // Load daily stats
+        const today = new Date().toISOString().split('T')[0];
+        const stats = await dbService.getDailyStats(user.id, today);
+        setDailyStats(stats);
+
+        // Load AI suggestions
+        try {
+          const suggestionsResponse = await fetch(`/api/ai/suggestions?userId=${user.id}`);
+          if (suggestionsResponse.ok) {
+            const suggestionsData = await suggestionsResponse.json();
+            setSuggestions(suggestionsData.data?.suggestions || []);
+          }
+        } catch (suggestError) {
+          console.error('Failed to load suggestions:', suggestError);
+        }
+
+      } catch (err) {
+        console.error('Dashboard initialization error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeDashboard();
+  }, []);
+
+  // Compute activity metrics from real data
   const activityMetrics = [
-    { label: "Move", value: "650", trend: 65, unit: "cal" as const },
-    { label: "Exercise", value: "30", trend: 75, unit: "min" as const },
-    { label: "Stand", value: "8", trend: 50, unit: "hrs" as const },
+    { 
+      label: "Move", 
+      value: dailyStats?.totalCalories?.toString() || "0", 
+      trend: Math.round((dailyStats?.totalCalories || 0) / 20), // Rough percentage
+      unit: "cal" as const 
+    },
+    { 
+      label: "Exercise", 
+      value: activities.filter(a => a.type === 'workout').length.toString(), 
+      trend: 75, // TODO: Calculate based on goals
+      unit: "min" as const 
+    },
+    { 
+      label: "Stand", 
+      value: dailyStats?.totalActivities?.toString() || "0", 
+      trend: 80, // TODO: Calculate based on goals
+      unit: "hrs" as const 
+    },
   ];
 
+  // Generate timeline data from activities
+  const timelineData = activities.slice(0, 5).map(activity => ({
+    title: new Date(activity.activity_date).toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit' 
+    }),
+    content: (
+      <div className="flex items-center gap-3 py-2">
+        <span className="text-2xl">
+          {activity.type === 'meal' ? '🍽️' : 
+           activity.type === 'workout' ? '🏃‍♀️' : 
+           activity.type === 'water_intake' ? '💧' : '📝'}
+        </span>
+        <div>
+          <h4 className="font-medium">{activity.title}</h4>
+          <p className="text-sm text-muted-foreground">{activity.description}</p>
+          {activity.calories_estimated && (
+            <p className="text-xs text-orange-600 font-medium">{activity.calories_estimated} cal</p>
+          )}
+        </div>
+      </div>
+    )
+  }));
+
   const dailyGoals = [
-    { id: "1", title: "Log 3 meals", isCompleted: false },
-    { id: "2", title: "Drink 8 glasses of water", isCompleted: true },
-    { id: "3", title: "Walk 10,000 steps", isCompleted: false },
+    { id: "1", title: "Log 3 meals", isCompleted: activities.filter(a => a.type === 'meal').length >= 3 },
+    { id: "2", title: "Record workout", isCompleted: activities.some(a => a.type === 'workout') },
+    { id: "3", title: "Track hydration", isCompleted: activities.some(a => a.type === 'water_intake') },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error: {error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Welcome to Fitally</h1>
+          <p className="text-gray-600 mb-4">Please sign in to view your dashboard</p>
+          <button 
+            onClick={() => window.location.href = '/auth/login'} 
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -102,7 +247,9 @@ export default function Dashboard() {
             </div>
             <div>
               <h1 className="text-lg font-semibold text-primary">fitally</h1>
-              <p className="text-xs text-muted-foreground">PREMIUM ✨</p>
+              <p className="text-xs text-muted-foreground">
+                Welcome, {profile?.full_name || user.email}
+              </p>
             </div>
           </div>
           <button className="p-2 hover:bg-muted rounded-full">
@@ -119,7 +266,7 @@ export default function Dashboard() {
           <button className="text-blue-500 text-sm font-medium">Edit</button>
         </div>
 
-        {/* Activity Card - Using proper props */}
+        {/* Activity Card - Using real data */}
         <ActivityCard
           category="Daily Activity"
           title="Today's Progress"
@@ -135,111 +282,88 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-4">
           <SimpleCard
             title="Calories Today"
-            value="1,650"
-            subtitle="Goal: 1,990"
-            trend="340 left"
+            value={dailyStats?.totalCalories?.toString() || "0"}
+            subtitle="Tracked activities"
+            trend={`${activities.length} logged`}
           />
           <SimpleCard
-            title="Steps"
-            value="6,000"
-            subtitle="Goal: 15,000"
-            trend="9,000 left"
+            title="Activities"
+            value={dailyStats?.totalActivities?.toString() || "0"}
+            subtitle="Total logged today"
+            trend={Object.keys(dailyStats?.typeBreakdown || {}).length > 0 ? 
+              `${Object.keys(dailyStats.typeBreakdown).length} types` : "Start logging!"}
           />
         </div>
 
-        {/* Macros Section */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4">Macros Breakdown</h3>
-          <div className="grid grid-cols-3 gap-3">
-            <SimpleCard
-              title="Carbs"
-              value="66g"
-              subtitle="Goal: 250g"
-              trend="184g left"
-              className="h-20 text-center"
-            />
-            <SimpleCard
-              title="Fat"
-              value="51g"
-              subtitle="Goal: 67g"
-              trend="16g left"
-              className="h-20 text-center"
-            />
-            <SimpleCard
-              title="Protein"
-              value="46g"
-              subtitle="Goal: 100g"
-              trend="54g left"
-              className="h-20 text-center"
-            />
-          </div>
-        </div>
-
-        {/* Exercise & Activity */}
-        <div className="grid grid-cols-1 gap-4">
-          <SimpleCard
-            title="Today's Exercise"
-            value="30 min"
-            subtitle="Morning run completed"
-            trend="+300 cal burned"
-            className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20"
-          />
-        </div>
-
-        {/* Smart Suggestions from AI */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4">💡 Smart Suggestions</h3>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <span className="text-lg">🥗</span>
-              <div>
-                <p className="text-sm font-medium">Try a protein-rich lunch</p>
-                <p className="text-xs text-muted-foreground">You're 54g away from your protein goal</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <span className="text-lg">🚶‍♂️</span>
-              <div>
-                <p className="text-sm font-medium">Evening walk recommended</p>
-                <p className="text-xs text-muted-foreground">9,000 more steps to reach your daily goal</p>
-              </div>
+        {/* AI Smart Suggestions */}
+        {suggestions.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4">💡 AI Recommendations</h3>
+            <div className="space-y-3">
+              {suggestions.slice(0, 3).map((suggestion, index) => (
+                <AISuggestion
+                  key={index}
+                  type={suggestion.type}
+                  title={suggestion.title}
+                  description={suggestion.description}
+                  priority={suggestion.priority}
+                />
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Activity Timeline - Simple version for now */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4">Today's Activities</h3>
-          <div className="space-y-4">
-            {timelineData.map((activity, index) => (
-              <div key={index} className="flex items-start gap-3 py-2 border-l-2 border-primary/20 pl-4">
-                <span className="text-xs text-muted-foreground font-medium min-w-[60px]">
-                  {activity.title}
-                </span>
-                <div className="flex-1">
-                  {activity.content}
+        {/* Activity Timeline - Real data */}
+        {timelineData.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4">Recent Activities</h3>
+            <div className="space-y-4">
+              {timelineData.map((activity, index) => (
+                <div key={index} className="flex items-start gap-3 py-2 border-l-2 border-primary/20 pl-4">
+                  <span className="text-xs text-muted-foreground font-medium min-w-[60px]">
+                    {activity.title}
+                  </span>
+                  <div className="flex-1">
+                    {activity.content}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Weekly Overview */}
+        {/* Empty state if no activities */}
+        {activities.length === 0 && (
+          <div className="bg-card border border-border rounded-xl p-6 shadow-sm text-center">
+            <h3 className="text-lg font-semibold mb-2">Start Your Journey</h3>
+            <p className="text-muted-foreground mb-4">
+              No activities logged yet. Tap the + button to capture your first health activity!
+            </p>
+            <button 
+              onClick={() => window.location.href = '/capture'}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+            >
+              Log Activity
+            </button>
+          </div>
+        )}
+
+        {/* Weekly Overview - Based on real data */}
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">This Week</h3>
           <div className="grid grid-cols-2 gap-4">
             <SimpleCard
-              title="Weekly Average"
-              value="1,750 cal"
-              subtitle="Great consistency!"
-              trend="+5% vs last week"
+              title="Total Activities"
+              value={activities.length.toString()}
+              subtitle="This session"
+              trend="Keep it up!"
               className="h-20"
             />
             <SimpleCard
-              title="Workout Days"
-              value="4/7"
-              subtitle="Almost there!"
-              trend="1 more to go"
+              title="Types Logged"
+              value={Object.keys(dailyStats?.typeBreakdown || {}).length.toString()}
+              subtitle="Activity variety"
+              trend="Diversify more!"
               className="h-20"
             />
           </div>
