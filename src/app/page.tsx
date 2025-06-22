@@ -1,103 +1,255 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+import { Calendar, Home, Plus, BarChart3, User } from "lucide-react";
+import { Dock } from "@/components/ui/dock-two";
+import { ActivityCard } from "@/components/ui/activity-card";
+import { Timeline } from "@/components/ui/timeline";
+import { Card } from "@/components/ui/card";
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+// Mock data for timeline
+const timelineData = [
+  {
+    title: "8:30 AM",
+    content: (
+      <div className="flex items-center gap-3 py-2">
+        <span className="text-2xl">🥣</span>
+        <div>
+          <h4 className="font-medium">Breakfast</h4>
+          <p className="text-sm text-muted-foreground">Oatmeal with berries</p>
+          <p className="text-xs text-orange-600 font-medium">350 cal</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      </div>
+    )
+  },
+  {
+    title: "7:00 AM", 
+    content: (
+      <div className="flex items-center gap-3 py-2">
+        <span className="text-2xl">🏃‍♀️</span>
+        <div>
+          <h4 className="font-medium">Morning Run</h4>
+          <p className="text-sm text-muted-foreground">30 minutes in the park</p>
+          <p className="text-xs text-orange-600 font-medium">300 cal</p>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: "6:30 AM",
+    content: (
+      <div className="flex items-center gap-3 py-2">
+        <span className="text-2xl">💧</span>
+        <div>
+          <h4 className="font-medium">Hydration</h4>
+          <p className="text-sm text-muted-foreground">2 glasses of water</p>
+        </div>
+      </div>
+    )
+  }
+];
+
+const dockItems = [
+  { icon: Home, label: "Dashboard", onClick: () => {} },
+  { icon: BarChart3, label: "Analytics", onClick: () => window.location.href = "/analytics" },
+  { icon: Plus, label: "Add Activity", onClick: () => window.location.href = "/capture" },
+  { icon: Calendar, label: "Plan", onClick: () => {} },
+  { icon: User, label: "Profile", onClick: () => window.location.href = "/profile" },
+];
+
+// Simple Card Component
+function SimpleCard({ title, value, subtitle, trend, className }: {
+  title: string;
+  value: string;
+  subtitle: string;
+  trend?: string;
+  className?: string;
+}) {
+  return (
+    <Card className={`p-4 ${className}`}>
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+        {trend && (
+          <p className="text-xs text-green-600 font-medium">{trend}</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+export default function Dashboard() {
+  const activityMetrics = [
+    { label: "Move", value: "650", trend: 65, unit: "cal" as const },
+    { label: "Exercise", value: "30", trend: 75, unit: "min" as const },
+    { label: "Stand", value: "8", trend: 50, unit: "hrs" as const },
+  ];
+
+  const dailyGoals = [
+    { id: "1", title: "Log 3 meals", isCompleted: false },
+    { id: "2", title: "Drink 8 glasses of water", isCompleted: true },
+    { id: "3", title: "Walk 10,000 steps", isCompleted: false },
+  ];
+
+  return (
+    <div className="min-h-screen bg-background pb-16">
+      {/* Header */}
+      <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border z-40">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+              <span className="text-white text-sm font-semibold">F</span>
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-primary">fitally</h1>
+              <p className="text-xs text-muted-foreground">PREMIUM ✨</p>
+            </div>
+          </div>
+          <button className="p-2 hover:bg-muted rounded-full">
+            <span className="text-lg">🔔</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="px-4 py-6 space-y-6">
+        {/* Today Section */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Today</h2>
+          <button className="text-blue-500 text-sm font-medium">Edit</button>
+        </div>
+
+        {/* Activity Card - Using proper props */}
+        <ActivityCard
+          category="Daily Activity"
+          title="Today's Progress"
+          metrics={activityMetrics}
+          dailyGoals={dailyGoals}
+          onAddGoal={() => console.log("Add goal")}
+          onToggleGoal={(goalId) => console.log("Toggle goal:", goalId)}
+          onViewDetails={() => console.log("View details")}
+          className="bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20"
+        />
+
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-2 gap-4">
+          <SimpleCard
+            title="Calories Today"
+            value="1,650"
+            subtitle="Goal: 1,990"
+            trend="340 left"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <SimpleCard
+            title="Steps"
+            value="6,000"
+            subtitle="Goal: 15,000"
+            trend="9,000 left"
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+        </div>
+
+        {/* Macros Section */}
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4">Macros Breakdown</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <SimpleCard
+              title="Carbs"
+              value="66g"
+              subtitle="Goal: 250g"
+              trend="184g left"
+              className="h-20 text-center"
+            />
+            <SimpleCard
+              title="Fat"
+              value="51g"
+              subtitle="Goal: 67g"
+              trend="16g left"
+              className="h-20 text-center"
+            />
+            <SimpleCard
+              title="Protein"
+              value="46g"
+              subtitle="Goal: 100g"
+              trend="54g left"
+              className="h-20 text-center"
+            />
+          </div>
+        </div>
+
+        {/* Exercise & Activity */}
+        <div className="grid grid-cols-1 gap-4">
+          <SimpleCard
+            title="Today's Exercise"
+            value="30 min"
+            subtitle="Morning run completed"
+            trend="+300 cal burned"
+            className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20"
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </div>
+
+        {/* Smart Suggestions from AI */}
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4">💡 Smart Suggestions</h3>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <span className="text-lg">🥗</span>
+              <div>
+                <p className="text-sm font-medium">Try a protein-rich lunch</p>
+                <p className="text-xs text-muted-foreground">You're 54g away from your protein goal</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <span className="text-lg">🚶‍♂️</span>
+              <div>
+                <p className="text-sm font-medium">Evening walk recommended</p>
+                <p className="text-xs text-muted-foreground">9,000 more steps to reach your daily goal</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Activity Timeline - Simple version for now */}
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4">Today's Activities</h3>
+          <div className="space-y-4">
+            {timelineData.map((activity, index) => (
+              <div key={index} className="flex items-start gap-3 py-2 border-l-2 border-primary/20 pl-4">
+                <span className="text-xs text-muted-foreground font-medium min-w-[60px]">
+                  {activity.title}
+                </span>
+                <div className="flex-1">
+                  {activity.content}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Weekly Overview */}
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4">This Week</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <SimpleCard
+              title="Weekly Average"
+              value="1,750 cal"
+              subtitle="Great consistency!"
+              trend="+5% vs last week"
+              className="h-20"
+            />
+            <SimpleCard
+              title="Workout Days"
+              value="4/7"
+              subtitle="Almost there!"
+              trend="1 more to go"
+              className="h-20"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
+        <Dock items={dockItems} />
+      </div>
     </div>
   );
 }
