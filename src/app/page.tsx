@@ -97,9 +97,8 @@ export default function Dashboard() {
         
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
-          // Redirect to auth or show unauthenticated state
-          console.log('No user found, showing guest view');
-          setLoading(false);
+          // Redirect to login page
+          window.location.href = '/login';
           return;
         }
 
