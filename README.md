@@ -1,9 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fitally
+
+Fitally is an AI-powered health and fitness tracking application that helps you monitor and analyze your wellness journey with intelligent insights.
+
+## Features
+
+- 🤖 **AI-Powered Analysis** - Get intelligent insights on your fitness and yoga activities
+- 🔐 **Secure Authentication** - Complete user authentication system with Supabase
+- 📊 **Health Dashboard** - Track and visualize your health data
+- 👤 **User Profiles** - Comprehensive onboarding and profile management
+- 📱 **Responsive Design** - Beautiful, mobile-friendly interface
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+Before running the application, make sure you have:
+- Node.js installed
+- A Supabase account and project set up
+
+### Installation
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Set up your environment variables (see `SETUP_INSTRUCTIONS.md` for detailed setup)
+
+3. Start the development server:
 ```bash
 npm run dev
 # or
@@ -14,11 +38,23 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run linting
+- `npm test` - Run tests
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage
+
+### Testing AI Flows
+
+Test the AI analysis capabilities:
 
 ```bash
 # Run the following commands to test AI flows
@@ -26,17 +62,16 @@ node test-ai-flows.js fitness  # Test fitness analysis
 node test-ai-flows.js yoga     # Test yoga analysis
 node test-ai-flows.js all      # Run full test suite
 ```
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+## Setup
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+For detailed setup instructions including Supabase configuration and authentication setup, see `SETUP_INSTRUCTIONS.md`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Technology Stack
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Frontend**: React with TypeScript
+- **Backend**: Supabase
+- **AI/ML**: Google AI with Genkit
+- **Styling**: Tailwind CSS
+- **UI Components**: Radix UI
+- **Testing**: Jest with Testing Library
