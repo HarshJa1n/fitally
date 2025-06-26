@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateSuggestionsFlow, quickDailySuggestionsFlow, SuggestionInputSchema } from '@/lib/ai/suggestion-flow';
 import { dbService } from '@/lib/supabase/database';
+import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
-// API request schema
+// API request schema (removed userId since we'll get it from auth)
 const APIRequestSchema = z.object({
   type: z.enum(['full', 'quick']).default('quick'),
-  userId: z.string(),
   suggestionType: z.enum(['workout', 'meal', 'general', 'recovery', 'nutrition']).default('general'),
   includeRecentActivities: z.boolean().default(true),
   timeContext: z.object({
@@ -18,21 +18,33 @@ const APIRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse and validate request body
-    const body = await request.json();
-    const { type, userId, suggestionType, includeRecentActivities, timeContext } = APIRequestSchema.parse(body);
-
-    // Get user profile
-    const userProfile = await dbService.getUserProfile(userId);
-    if (!userProfile) {
+    // Get authenticated user from session
+    const supabase = createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
       return NextResponse.json(
-        { 
-          error: 'User profile not found',
-          code: 'USER_NOT_FOUND'
-        },
-        { status: 404 }
+        { error: 'Authentication required' },
+        { status: 401 }
       );
     }
+
+    // Parse and validate request body
+    const body = await request.json();
+    const { type, suggestionType, includeRecentActivities, timeContext } = APIRequestSchema.parse(body);
+    const userId = user.id;
+
+    // Get user profile or use defaults
+    const userProfile = await dbService.getUserProfile(userId);
+    const defaultProfile = {
+      fitness_goals: ['general_fitness'],
+      activity_level: 'moderately_active',
+      dietary_preferences: [],
+      weight_kg: null,
+      height_cm: null,
+    };
+    
+    const profileToUse = userProfile || defaultProfile;
 
     // Get recent activities if requested
     let recentActivities: any[] = [];
@@ -62,11 +74,11 @@ export async function POST(request: NextRequest) {
       userId,
       recentActivities,
       userProfile: {
-        fitness_goals: userProfile.fitness_goals || [],
-        activity_level: userProfile.activity_level || 'moderately_active',
-        dietary_preferences: userProfile.dietary_preferences || [],
-        weight_kg: userProfile.weight_kg || undefined,
-        height_cm: userProfile.height_cm || undefined,
+        fitness_goals: profileToUse.fitness_goals || [],
+        activity_level: profileToUse.activity_level || 'moderately_active',
+        dietary_preferences: profileToUse.dietary_preferences || [],
+        weight_kg: profileToUse.weight_kg || undefined,
+        height_cm: profileToUse.height_cm || undefined,
       },
       timeContext: currentTimeContext,
       suggestionType,
@@ -93,7 +105,7 @@ export async function POST(request: NextRequest) {
         userContext: {
           activitiesAnalyzed: recentActivities.length,
           timeContext: currentTimeContext,
-          userGoals: userProfile.fitness_goals,
+          userGoals: profileToUse.fitness_goals,
         },
       }
     });
@@ -140,15 +152,18 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const userId = searchParams.get('userId');
-
-  if (!userId) {
+  // Get authenticated user from session
+  const supabase = createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  if (authError || !user) {
     return NextResponse.json(
-      { error: 'User ID is required', code: 'MISSING_USER_ID' },
-      { status: 400 }
+      { error: 'Authentication required' },
+      { status: 401 }
     );
   }
+  
+  const userId = user.id;
 
   try {
     // Generate quick daily suggestions

@@ -126,7 +126,7 @@ export default function Dashboard() {
 
         // Load AI suggestions
         try {
-          const suggestionsResponse = await fetch(`/api/ai/suggestions?userId=${user.id}`);
+          const suggestionsResponse = await fetch('/api/ai/suggestions');
           if (suggestionsResponse.ok) {
             const suggestionsData = await suggestionsResponse.json();
             setSuggestions(suggestionsData.data?.suggestions || []);
