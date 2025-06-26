@@ -877,7 +877,7 @@ const CTASection = () => {
                             Start Free Today
                         </Link>
                     </Button>
-                    <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10" asChild>
+                    <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-orange-600" asChild>
                         <Link href="#demo">
                             See How It Works
                         </Link>
@@ -938,7 +938,7 @@ const FitallyHeader = () => {
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <Button variant="ghost" asChild>
+                            <Button variant="ghost" asChild className="hidden md:block">
                                 <Link href="/login">Sign In</Link>
                             </Button>
                             <Button className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600" asChild>
