@@ -18,7 +18,7 @@ export class DatabaseService {
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching user profile:', error);
@@ -255,7 +255,7 @@ export class DatabaseService {
       .select('analysis_result')
       .eq('content_hash', contentHash)
       .gt('expires_at', new Date().toISOString())
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       return null;
@@ -300,7 +300,7 @@ export class DatabaseService {
       .select('preference_value')
       .eq('user_id', userId)
       .eq('preference_key', key)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       return null;
