@@ -8,6 +8,47 @@ export const ai = genkit({
   model: googleAI.model('gemini-2.0-flash'), // Latest model as per 2025 research
 });
 
+// Individual Food Item Schema for editable nutrition tracking
+export const FoodItemSchema = z.object({
+  id: z.string().default(() => Math.random().toString(36).substr(2, 9)),
+  name: z.string(),
+  quantity: z.object({
+    amount: z.number(),
+    unit: z.string() // e.g., "cups", "grams", "pieces", "slices"
+  }),
+  calories: z.number(),
+  macros: z.object({
+    protein: z.number().optional(),
+    carbs: z.number().optional(),
+    fat: z.number().optional(),
+    fiber: z.number().optional(),
+    sugar: z.number().optional()
+  }).optional(),
+  confidence: z.number().min(0).max(1).default(0.8)
+});
+
+// Individual Exercise Set Schema for editable workout tracking
+export const ExerciseSetSchema = z.object({
+  id: z.string().default(() => Math.random().toString(36).substr(2, 9)),
+  name: z.string(),
+  sets: z.number().optional(),
+  reps: z.number().optional(),
+  weight: z.object({
+    amount: z.number(),
+    unit: z.enum(['lbs', 'kg'])
+  }).optional(),
+  duration: z.object({
+    value: z.number(),
+    unit: z.enum(['seconds', 'minutes'])
+  }).optional(),
+  distance: z.object({
+    amount: z.number(),
+    unit: z.enum(['meters', 'miles', 'km'])
+  }).optional(),
+  calories: z.number().optional(),
+  confidence: z.number().min(0).max(1).default(0.8)
+});
+
 // Health Activity Schema for structured output
 export const HealthActivitySchema = z.object({
   activityType: z.enum([
@@ -40,6 +81,13 @@ export const HealthActivitySchema = z.object({
     estimated: z.number(),
     confidence: z.number().min(0).max(1)
   }).optional(),
+  
+  // Enhanced food tracking with individual items
+  foodItems: z.array(FoodItemSchema).optional().describe('Individual food items detected for meals/snacks'),
+  
+  // Enhanced exercise tracking with individual exercises
+  exercises: z.array(ExerciseSetSchema).optional().describe('Individual exercises detected for workouts'),
+  
   insights: z.object({
     primaryMuscleGroups: z.array(z.string()).optional(),
     equipmentUsed: z.array(z.string()).optional(),
@@ -89,4 +137,6 @@ export const HealthAnalysisInputSchema = z.object({
 });
 
 export type HealthActivity = z.infer<typeof HealthActivitySchema>;
-export type HealthAnalysisInput = z.infer<typeof HealthAnalysisInputSchema>; 
+export type HealthAnalysisInput = z.infer<typeof HealthAnalysisInputSchema>;
+export type FoodItem = z.infer<typeof FoodItemSchema>;
+export type ExerciseSet = z.infer<typeof ExerciseSetSchema>; 

@@ -21,29 +21,11 @@ interface CapturedData {
   additionalContext?: string;
 }
 
-interface AIAnalysisResult {
-  activityType: string;
-  subCategory?: string;
-  duration?: { value: number; unit: string };
-  intensity?: string;
-  calories?: { estimated: number; confidence: number };
-  insights: {
-    primaryMuscleGroups?: string[];
-    equipmentUsed?: string[];
-    technique?: string;
-    improvements?: string[];
-    warnings?: string[];
-  };
-  nutritionalInfo?: {
-    macros?: { protein?: number; carbs?: number; fat?: number };
-    micronutrients?: string[];
-    healthScore?: number;
-  };
-  confidence: number;
-  tags: string[];
-  notes?: string;
-  timestamp: string;
-}
+// Import the types from genkit config
+import { type HealthActivity, type FoodItem, type ExerciseSet } from "@/lib/ai/genkit-config";
+import { EditableFoodList, EditableExerciseList } from "@/components/ui/editable-activity-list";
+
+interface AIAnalysisResult extends HealthActivity {}
 
 export default function CapturePage() {
   const router = useRouter();
@@ -384,6 +366,38 @@ export default function CapturePage() {
             </CardContent>
           </Card>
 
+          {/* Editable Food Items */}
+          {analysisResult.foodItems && analysisResult.foodItems.length > 0 && (
+            <div className="mb-6">
+              <EditableFoodList
+                title="Food Items Detected"
+                foodItems={analysisResult.foodItems}
+                onUpdate={(updatedItems) => {
+                  setAnalysisResult(prev => prev ? {
+                    ...prev,
+                    foodItems: updatedItems
+                  } : null);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Editable Exercises */}
+          {analysisResult.exercises && analysisResult.exercises.length > 0 && (
+            <div className="mb-6">
+              <EditableExerciseList
+                title="Exercises Detected"
+                exercises={analysisResult.exercises}
+                onUpdate={(updatedExercises) => {
+                  setAnalysisResult(prev => prev ? {
+                    ...prev,
+                    exercises: updatedExercises
+                  } : null);
+                }}
+              />
+            </div>
+          )}
+
           {/* Error Display */}
           {error && (
             <div className="flex items-center gap-2 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -556,10 +570,9 @@ export default function CapturePage() {
 
           {currentMode === "voice" && (
             <div className="max-w-md mx-auto">
-              <AIVoiceInput 
+                            <AIVoiceInput
                 onStart={handleVoiceStart}
                 onStop={handleVoiceStop}
-                isRecording={voiceRecording}
               />
             </div>
           )}

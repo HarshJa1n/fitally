@@ -198,7 +198,18 @@ export class MultimodalProcessor {
 - Safety considerations and recommendations
 - Muscle groups being targeted
 - Estimated intensity level
-- Any improvements or modifications suggested`,
+- Any improvements or modifications suggested
+
+For FOOD images specifically:
+- Identify individual food items visible in the image
+- Estimate portion sizes and quantities
+- Calculate calories and macros for each food item
+- Assess nutritional value and health score
+
+For WORKOUT images specifically:
+- Break down the workout into individual exercises
+- Identify sets, reps, and weights if visible
+- Estimate duration and calories burned for each exercise`,
 
       audio: `Transcribe and analyze this health and fitness related audio. Focus on:
 - Activity descriptions mentioned
@@ -377,7 +388,17 @@ Please provide a comprehensive analysis that:
 3. Provides detailed insights relevant to the user's goals and fitness level
 4. Offers personalized recommendations and improvements
 5. Considers any health conditions or preferences mentioned
-6. Assigns appropriate tags for categorization and tracking`;
+6. Assigns appropriate tags for categorization and tracking
+
+IMPORTANT - For nutrition/meal activities:
+- Populate the 'foodItems' array with individual food items detected
+- Each food item should have: name, quantity (amount + unit), calories, and macros if possible
+- Estimate realistic calorie and macro values for each item
+
+IMPORTANT - For workout/exercise activities:
+- Populate the 'exercises' array with individual exercises detected
+- Each exercise should have: name, sets, reps, weight (if applicable), duration (if applicable), calories burned
+- Break down compound movements into individual exercises when possible`;
 
     return instructions;
   }
