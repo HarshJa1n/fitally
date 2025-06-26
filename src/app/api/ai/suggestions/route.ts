@@ -18,6 +18,18 @@ const APIRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if we're in build mode with placeholder credentials
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co') {
+      return NextResponse.json(
+        { 
+          error: 'Service not configured', 
+          code: 'NOT_CONFIGURED',
+          message: 'Please configure your Supabase credentials'
+        },
+        { status: 503 }
+      );
+    }
+
     // Parse and validate request body
     const body = await request.json();
     const { type, userId, suggestionType, includeRecentActivities, timeContext } = APIRequestSchema.parse(body);
@@ -151,6 +163,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Check if we're in build mode with placeholder credentials
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co') {
+      return NextResponse.json(
+        { 
+          error: 'Service not configured', 
+          code: 'NOT_CONFIGURED',
+          message: 'Please configure your Supabase credentials'
+        },
+        { status: 503 }
+      );
+    }
     // Generate quick daily suggestions
     const userProfile = await dbService.getUserProfile(userId);
     if (!userProfile) {
