@@ -9,7 +9,7 @@ export interface Metric {
   label: string;
   value: string;
   trend: number;
-  unit?: "cal" | "min" | "hrs";
+  unit?: "cal" | "min" | "hrs" | "g" | "steps";
 }
 
 export interface Goal {
@@ -30,9 +30,12 @@ interface ActivityCardProps {
 }
 
 const METRIC_COLORS = {
-  Move: "#FF2D55",
-  Exercise: "#2CD758",
-  Stand: "#007AFF",
+  "Calorie Deficit": "#FF6B6B",
+  "Protein": "#4ECDC4",
+  "Steps": "#45B7D1",
+  "Exercise": "#96CEB4",
+  "Move": "#FF2D55",
+  "Stand": "#007AFF",
 } as const;
 
 export function ActivityCard({
