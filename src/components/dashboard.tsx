@@ -10,6 +10,7 @@ import { dbService } from "@/lib/supabase/database";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database, HealthActivity, Profile } from "@/types/database";
 import { HealthDataProcessor } from "@/lib/processors/health-data-processor";
+import { notificationService } from "@/lib/services/notification-service";
 
 const dockItems = [
   { icon: Home, label: "Dashboard", onClick: () => {} },
@@ -97,6 +98,9 @@ export default function Dashboard() {
         } catch (suggestError) {
           console.error('Failed to load suggestions:', suggestError);
         }
+
+        // Initialize notification service
+        await notificationService.requestPermission();
 
       } catch (err) {
         console.error('Dashboard initialization error:', err);

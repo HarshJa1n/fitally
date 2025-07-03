@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { dbService } from "@/lib/supabase/database";
 import { createBrowserClient } from "@supabase/ssr";
+import { notificationService } from "@/lib/services/notification-service";
 
 type InputMode = "camera" | "voice" | "text" | "image";
 
@@ -205,6 +206,12 @@ export default function CapturePage() {
       const savedActivity = await dbService.createHealthActivity(activityData, analysisResult);
       
       if (savedActivity) {
+        // Show success notification if it's a meal
+        if (dbActivityType === 'meal' || analysisResult.activityType.includes('meal') || analysisResult.activityType.includes('food')) {
+          const mealType = analysisResult.subCategory || 'meal';
+          await notificationService.showMealLoggedNotification(mealType);
+        }
+        
         // Success! Navigate to home or show success message
         router.push('/?activity=' + savedActivity.id);
       } else {
