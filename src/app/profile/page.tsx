@@ -14,6 +14,7 @@ import { Calendar, Home, Plus, BarChart3 } from "lucide-react";
 import { DatabaseService } from "@/lib/supabase/database";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database, Profile } from "@/types/database";
+import { notificationService, type NotificationSettings as ServiceNotificationSettings } from "@/lib/services/notification-service";
 
 const dockItems = [
   { icon: Home, label: "Dashboard", onClick: () => window.location.href = "/" },
@@ -83,6 +84,34 @@ export default function ProfilePage() {
     weeklyReports: true,
     achievementAlerts: true
   });
+  
+  const [lunchReminderTime, setLunchReminderTime] = useState<string>('14:00');
+
+  // Load notification settings from the service
+  useEffect(() => {
+    const loadNotificationSettings = () => {
+      const settings = notificationService.getSettings();
+      setNotifications({
+        mealReminders: settings.mealReminders,
+        workoutReminders: settings.workoutReminders,
+        hydrationReminders: settings.hydrationReminders,
+        weeklyReports: settings.weeklyReports,
+        achievementAlerts: settings.achievementAlerts
+      });
+      setLunchReminderTime(settings.lunchReminderTime || '14:00');
+    };
+
+    loadNotificationSettings();
+  }, []);
+
+  // Save notification settings when they change
+  useEffect(() => {
+    const serviceSettings: ServiceNotificationSettings = {
+      ...notifications,
+      lunchReminderTime
+    };
+    notificationService.saveSettings(serviceSettings);
+  }, [notifications, lunchReminderTime]);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -490,6 +519,22 @@ export default function ProfilePage() {
               onCheckedChange={(checked) => setNotifications({...notifications, mealReminders: checked})}
             />
           </div>
+          
+          {notifications.mealReminders && (
+            <div className="ml-4 pl-4 border-l-2 border-muted">
+              <div>
+                <Label htmlFor="lunch-time">🍽️ Lunch Reminder Time</Label>
+                <p className="text-sm text-muted-foreground mb-2">Get notified daily to log your lunch</p>
+                <Input
+                  id="lunch-time"
+                  type="time"
+                  value={lunchReminderTime}
+                  onChange={(e) => setLunchReminderTime(e.target.value)}
+                  className="w-32"
+                />
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="workout-reminders">Workout Reminders</Label>
