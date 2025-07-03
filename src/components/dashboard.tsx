@@ -29,12 +29,14 @@ function SimpleCard({ title, value, subtitle, trend, className }: {
 }) {
   return (
     <Card className={`p-4 ${className}`}>
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
-        <p className="text-2xl font-bold">{value}</p>
-        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      <div className="flex flex-col h-full">
+        <div className="flex-grow space-y-1">
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-2xl font-bold">{value}</p>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </div>
         {trend && (
-          <p className="text-xs text-green-600 font-medium">{trend}</p>
+          <p className="text-xs text-green-600 font-medium mt-2">{trend}</p>
         )}
       </div>
     </Card>
@@ -200,29 +202,49 @@ export default function Dashboard() {
 
   const activityMetrics = calculateNewMetrics();
 
-  // Generate timeline data from activities
-  const timelineData = activities.slice(0, 5).map(activity => ({
-    title: new Date(activity.activity_date).toLocaleTimeString('en-US', { 
+  // Generate timeline data from activities with date info
+  const timelineData = activities.slice(0, 5).map(activity => {
+    const activityDate = new Date(activity.activity_date);
+    const isToday = activityDate.toDateString() === new Date().toDateString();
+    const isYesterday = activityDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
+    
+    let dayLabel = '';
+    if (isToday) {
+      dayLabel = 'Today';
+    } else if (isYesterday) {
+      dayLabel = 'Yesterday';  
+    } else {
+      dayLabel = activityDate.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    }
+    
+    const timeLabel = activityDate.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit' 
-    }),
-    content: (
-      <div className="flex items-center gap-3 py-2">
-        <span className="text-2xl">
-          {activity.type === 'meal' ? '🍽️' : 
-           activity.type === 'workout' ? '🏃‍♀️' : 
-           activity.type === 'water_intake' ? '💧' : '📝'}
-        </span>
-        <div>
-          <h4 className="font-medium">{activity.title}</h4>
-          <p className="text-sm text-muted-foreground">{activity.description}</p>
-          {activity.calories_estimated && (
-            <p className="text-xs text-orange-600 font-medium">{activity.calories_estimated} cal</p>
-          )}
+    });
+
+    return {
+      title: `${dayLabel} ${timeLabel}`,
+      content: (
+        <div className="flex items-center gap-3 py-2">
+          <span className="text-2xl">
+            {activity.type === 'meal' ? '🍽️' : 
+             activity.type === 'workout' ? '🏃‍♀️' : 
+             activity.type === 'water_intake' ? '💧' : '📝'}
+          </span>
+          <div>
+            <h4 className="font-medium">{activity.title}</h4>
+            <p className="text-sm text-muted-foreground">{activity.description}</p>
+            {activity.calories_estimated && (
+              <p className="text-xs text-orange-600 font-medium">{activity.calories_estimated} cal</p>
+            )}
+          </div>
         </div>
-      </div>
-    )
-  }));
+      )
+    };
+  });
 
   // Use processed data for daily goals - Focus on app engagement
   const dailyGoals = [
@@ -380,22 +402,22 @@ export default function Dashboard() {
         )}
 
         {/* Weekly Overview - Based on real data */}
-        <div className="bg-card border border-border rounded-xl shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 p-6 pb-0">This Week</h3>
-          <div className="grid grid-cols-2 gap-4 p-6 pt-0">
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4">This Week</h3>
+          <div className="grid grid-cols-2 gap-4">
             <SimpleCard
               title="Total Activities"
               value={activities.length.toString()}
               subtitle="This session"
               trend="Keep it up!"
-              className="h-20"
+              className="min-h-[100px] flex flex-col justify-between"
             />
             <SimpleCard
               title="Types Logged"
               value={Object.keys(dailyStats?.typeBreakdown || {}).length.toString()}
               subtitle="Activity variety"
               trend="Diversify more!"
-              className="h-20"
+              className="min-h-[100px] flex flex-col justify-between"
             />
           </div>
         </div>
