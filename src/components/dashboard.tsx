@@ -107,6 +107,55 @@ export default function Dashboard() {
     initializeDashboard();
   }, []);
 
+  // Generate AI insights when data is ready
+  useEffect(() => {
+    const generateInsights = async () => {
+      if (activities.length > 0 && profile) {
+        try {
+          const processor = new HealthDataProcessor(profile, activities);
+          const todayData = processor.processToday();
+          
+          // Try AI insights first
+          try {
+            const response = await fetch('/api/ai/insights', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ 
+                processedData: todayData,
+                profile: profile 
+              }),
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              if (result.success && result.data?.insights) {
+                setInsights(result.data.insights.map((insight: any) => insight.message));
+                return;
+              }
+            }
+          } catch (aiError) {
+            console.warn('AI insights failed, using fallback:', aiError);
+          }
+
+          // Fallback to static insights
+          const staticInsights = processor.generateInsights(todayData);
+          setInsights(staticInsights);
+          
+        } catch (error) {
+          console.error('Failed to generate any insights:', error);
+          setInsights([
+            "Keep up the great work with your health tracking!",
+            "Every small step towards your goals counts."
+          ]);
+        }
+      }
+    };
+
+    generateInsights();
+  }, [activities, profile]);
+
   // Filter today's activities
   const today = new Date().toISOString().split('T')[0];
   const todaysActivities = activities.filter(activity => 
@@ -175,16 +224,13 @@ export default function Dashboard() {
     )
   }));
 
-  // Use processed data for daily goals
+  // Use processed data for daily goals - Focus on app engagement
   const dailyGoals = [
     { id: "1", title: "Log 3 meals", isCompleted: todayData.goals.mealsLogged },
-    { id: "2", title: "Complete workout", isCompleted: todayData.goals.workoutCompleted },
-    { id: "3", title: "Meet protein target", isCompleted: todayData.goals.proteinTarget },
-    { id: "4", title: "Calorie deficit", isCompleted: todayData.goals.calorieDeficit },
   ];
 
-  // Generate AI insights based on processed data
-  const insights = processor.generateInsights(todayData);
+  // State for AI insights
+  const [insights, setInsights] = useState<string[]>([]);
 
   if (loading) {
     return (
@@ -250,11 +296,6 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="px-4 py-6 space-y-6">
-        {/* Today Section */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Today</h2>
-          <button className="text-blue-500 text-sm font-medium">Edit</button>
-        </div>
 
         {/* Activity Card - Using new metrics */}
         <ActivityCard
@@ -339,9 +380,9 @@ export default function Dashboard() {
         )}
 
         {/* Weekly Overview - Based on real data */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-4">This Week</h3>
-          <div className="grid grid-cols-2 gap-4">
+        <div className="bg-card border border-border rounded-xl shadow-sm">
+          <h3 className="text-lg font-semibold mb-4 p-6 pb-0">This Week</h3>
+          <div className="grid grid-cols-2 gap-4 p-6 pt-0">
             <SimpleCard
               title="Total Activities"
               value={activities.length.toString()}
@@ -361,7 +402,7 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
         <Dock items={dockItems} />
       </div>
     </div>

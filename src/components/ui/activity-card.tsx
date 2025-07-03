@@ -81,7 +81,7 @@ export function ActivityCard({
       </div>
 
       {/* Metrics Rings */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-6">
         {metrics.map((metric, index) => (
           <div
             key={metric.label}
@@ -89,7 +89,7 @@ export function ActivityCard({
             onMouseEnter={() => setIsHovering(metric.label)}
             onMouseLeave={() => setIsHovering(null)}
           >
-            <div className="relative w-24 h-24">
+            <div className="relative w-32 h-32">
               <div className="absolute inset-0 rounded-full border-4 border-zinc-200 dark:border-zinc-800/50" />
               <div
                 className={cn(
@@ -102,10 +102,10 @@ export function ActivityCard({
                 }}
               />
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl font-bold text-zinc-900 dark:text-white">
+                <span className="text-2xl font-bold text-zinc-900 dark:text-white">
                   {metric.value}
                 </span>
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                <span className="text-sm text-zinc-500 dark:text-zinc-400">
                   {metric.unit}
                 </span>
               </div>
@@ -175,18 +175,7 @@ export function ActivityCard({
           </div>
         </div>
 
-        <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
-          <button
-            onClick={onViewDetails}
-            className="inline-flex items-center gap-2 text-sm font-medium
-              text-zinc-600 hover:text-zinc-900 
-              dark:text-zinc-400 dark:hover:text-white
-              transition-colors duration-200"
-          >
-            View Activity Details
-            <ArrowUpRight className="w-4 h-4" />
-          </button>
-        </div>
+
       </div>
     </div>
   );

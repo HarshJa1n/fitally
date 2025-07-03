@@ -305,7 +305,7 @@ export class HealthDataProcessor {
   }
 
   /**
-   * Generate insights based on processed data
+   * Generate insights based on processed data (static fallback)
    */
   generateInsights(processedData: DailyProcessedData): string[] {
     const insights: string[] = [];
