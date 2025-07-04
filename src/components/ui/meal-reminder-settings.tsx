@@ -46,6 +46,7 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     breakfast: true,
     lunch: false,
@@ -56,8 +57,16 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
 
   // Load initial data
   useEffect(() => {
-    loadPreferences();
-    checkPermissionState();
+    const initialize = async () => {
+      setIsInitializing(true);
+      await Promise.all([
+        loadPreferences(),
+        checkPermissionState()
+      ]);
+      setIsInitializing(false);
+    };
+    
+    initialize();
   }, []);
 
   const loadPreferences = async () => {
@@ -208,6 +217,28 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
     }
   }, [testResults]);
 
+  // Show loading state while initializing
+  if (isInitializing) {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="w-5 h-5" />
+            Meal Reminders
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-6">
+            <p className="text-muted-foreground">
+              Checking notification support...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show not supported message only after checking
   if (!permissionState.supported) {
     return (
       <Card className={className}>
@@ -223,6 +254,11 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
               Push notifications are not supported in this browser. 
               Try using Chrome, Firefox, Safari, or Edge for the best experience.
             </p>
+            {permissionState.error && (
+              <p className="text-sm text-red-600 mt-2">
+                Error: {permissionState.error}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

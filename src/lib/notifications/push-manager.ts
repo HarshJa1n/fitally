@@ -24,13 +24,23 @@ export class PushNotificationManager {
    * Check if push notifications are supported in the current browser
    */
   public isSupported(): boolean {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === 'undefined') {
+      console.log('Push notifications: window is undefined (SSR)');
+      return false;
+    }
     
-    return (
-      'serviceWorker' in navigator &&
-      'PushManager' in window &&
-      'Notification' in window
-    );
+    const hasServiceWorker = 'serviceWorker' in navigator;
+    const hasPushManager = 'PushManager' in window;
+    const hasNotification = 'Notification' in window;
+    
+    console.log('Push notification support check:', {
+      hasServiceWorker,
+      hasPushManager,
+      hasNotification,
+      userAgent: navigator.userAgent
+    });
+    
+    return hasServiceWorker && hasPushManager && hasNotification;
   }
 
   /**
@@ -47,7 +57,10 @@ export class PushNotificationManager {
    * Get current notification permission state and subscription info
    */
   public async getPermissionState(): Promise<NotificationPermissionState> {
+    console.log('Getting permission state...');
+    
     if (!this.isSupported()) {
+      console.log('Push notifications not supported');
       return {
         supported: false,
         permission: 'denied',
@@ -58,6 +71,8 @@ export class PushNotificationManager {
 
     try {
       const permission = Notification.permission;
+      console.log('Current permission:', permission);
+      
       let subscription: PushSubscription | null = null;
 
       if (permission === 'granted') {
@@ -71,11 +86,14 @@ export class PushNotificationManager {
         }
       }
 
-      return {
+      const result = {
         supported: true,
         permission,
         subscription,
       };
+      
+      console.log('Permission state result:', result);
+      return result;
     } catch (error) {
       console.error('Error getting permission state:', error);
       return {
