@@ -14,6 +14,7 @@ import { Calendar, Home, Plus, BarChart3 } from "lucide-react";
 import { DatabaseService } from "@/lib/supabase/database";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database, Profile } from "@/types/database";
+import { MealReminderSettings } from "@/components/ui/meal-reminder-settings";
 
 const dockItems = [
   { icon: Home, label: "Dashboard", onClick: () => window.location.href = "/" },
@@ -471,25 +472,17 @@ export default function ProfilePage() {
 
   const renderSettingsTab = () => (
     <div className="space-y-6">
+      {/* Advanced Meal Reminder Settings */}
+      <MealReminderSettings />
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="w-5 h-5" />
-            Notifications
+            Other Notifications
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="meal-reminders">Meal Reminders</Label>
-              <p className="text-sm text-muted-foreground">Get reminded to log your meals</p>
-            </div>
-            <Switch
-              id="meal-reminders"
-              checked={notifications.mealReminders}
-              onCheckedChange={(checked) => setNotifications({...notifications, mealReminders: checked})}
-            />
-          </div>
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="workout-reminders">Workout Reminders</Label>

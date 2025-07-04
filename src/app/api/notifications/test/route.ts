@@ -4,8 +4,14 @@ import webpush from 'web-push';
 
 // Configure VAPID details
 if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  const vapidSubject = process.env.VAPID_SUBJECT && process.env.VAPID_SUBJECT.startsWith('mailto:') 
+    ? process.env.VAPID_SUBJECT 
+    : process.env.VAPID_SUBJECT 
+      ? `mailto:${process.env.VAPID_SUBJECT}`
+      : 'mailto:notifications@fitally.app';
+      
   webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:notifications@fitally.app',
+    vapidSubject,
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     process.env.VAPID_PRIVATE_KEY
   );
