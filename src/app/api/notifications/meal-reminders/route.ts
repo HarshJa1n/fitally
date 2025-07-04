@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { MealReminderPreferences, DEFAULT_MEAL_REMINDERS } from '@/types/notifications';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createClient();
     
     // Get user session
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createClient();
     
     // Get user session
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createClient();
     
     // Get user session
     const { data: { user }, error: authError } = await supabase.auth.getUser();
