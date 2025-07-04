@@ -82,8 +82,11 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
   };
 
   const checkPermissionState = async () => {
+    console.log('Component: Checking permission state...');
     const state = await pushNotificationManager.getPermissionState();
+    console.log('Component: Got permission state:', state);
     setPermissionState(state);
+    console.log('Component: State updated, supported:', state.supported);
   };
 
   const handlePermissionRequest = async () => {
@@ -239,7 +242,10 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
   }
 
   // Show not supported message only after checking
+  console.log('Component render: isInitializing:', isInitializing, 'supported:', permissionState.supported, 'permission:', permissionState.permission);
+  
   if (!permissionState.supported) {
+    console.log('Component: Rendering not supported message');
     return (
       <Card className={className}>
         <CardHeader>
@@ -265,6 +271,8 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
     );
   }
 
+  console.log('Component: Rendering main settings UI');
+  
   return (
     <Card className={className}>
       <CardHeader>
@@ -295,58 +303,6 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
               >
                 {isLoading ? 'Enabling...' : 'Enable'}
               </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Subscription Status - when permission is granted but no subscription */}
-        {permissionState.permission === 'granted' && !permissionState.subscription && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium">Set up Push Notifications</h4>
-                <p className="text-sm text-muted-foreground">
-                  Complete setup to receive meal reminder notifications
-                </p>
-              </div>
-              <Button 
-                onClick={handlePermissionRequest}
-                disabled={isLoading}
-                size="sm"
-              >
-                {isLoading ? 'Setting up...' : 'Set up'}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Active Status - when fully set up */}
-        {permissionState.permission === 'granted' && permissionState.subscription && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium">✅ Notifications Active</h4>
-                <p className="text-sm text-muted-foreground">
-                  Meal reminders are ready! Test or save your settings below.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={sendTestNotification}
-                  disabled={isLoading}
-                  variant="outline"
-                  size="sm"
-                >
-                  {isLoading ? 'Testing...' : 'Test'}
-                </Button>
-                <Button 
-                  onClick={savePreferences}
-                  disabled={isSaving}
-                  size="sm"
-                >
-                  {isSaving ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
             </div>
           </div>
         )}

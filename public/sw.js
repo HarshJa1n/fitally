@@ -126,13 +126,23 @@ self.addEventListener('push', (event) => {
       };
     }
     
+    console.log('[Service Worker] About to show notification:', notificationData);
+    
     event.waitUntil(
       self.registration.showNotification(notificationData.title, notificationData)
+        .then(() => {
+          console.log('[Service Worker] Notification displayed successfully');
+        })
+        .catch((error) => {
+          console.error('[Service Worker] Failed to show notification:', error);
+        })
     );
   } catch (error) {
     console.error('[Service Worker] Error handling push:', error);
     
     // Fallback notification in case of error
+    console.log('[Service Worker] Showing fallback notification');
+    
     event.waitUntil(
       self.registration.showNotification('Fitally Health Reminder', {
         body: 'Time to check your health goals!',
@@ -140,6 +150,12 @@ self.addEventListener('push', (event) => {
         badge: '/favicon.ico',
         data: { url: '/' }
       })
+        .then(() => {
+          console.log('[Service Worker] Fallback notification displayed successfully');
+        })
+        .catch((error) => {
+          console.error('[Service Worker] Failed to show fallback notification:', error);
+        })
     );
   }
 });
