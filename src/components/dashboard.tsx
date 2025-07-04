@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { dbService } from "@/lib/supabase/database";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database, HealthActivity, Profile } from "@/types/database";
+import { HealthDataProcessor } from "@/lib/processors/health-data-processor";
 
 const dockItems = [
   { icon: Home, label: "Dashboard", onClick: () => {} },
@@ -28,54 +29,21 @@ function SimpleCard({ title, value, subtitle, trend, className }: {
 }) {
   return (
     <Card className={`p-4 ${className}`}>
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
-        <p className="text-2xl font-bold">{value}</p>
-        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      <div className="flex flex-col h-full">
+        <div className="flex-grow space-y-1">
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-2xl font-bold">{value}</p>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </div>
         {trend && (
-          <p className="text-xs text-green-600 font-medium">{trend}</p>
+          <p className="text-xs text-green-600 font-medium mt-2">{trend}</p>
         )}
       </div>
     </Card>
   );
 }
 
-// AI Suggestion Component
-function AISuggestion({ type, title, description, priority }: {
-  type: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high';
-}) {
-  const getIcon = () => {
-    switch (type) {
-      case 'workout': return '🏃‍♂️';
-      case 'meal': return '🥗';
-      case 'hydration': return '💧';
-      case 'rest': return '😴';
-      case 'supplement': return '💊';
-      default: return '💡';
-    }
-  };
 
-  const getPriorityColor = () => {
-    switch (priority) {
-      case 'high': return 'bg-red-50 dark:bg-red-900/20';
-      case 'medium': return 'bg-yellow-50 dark:bg-yellow-900/20';
-      default: return 'bg-blue-50 dark:bg-blue-900/20';
-    }
-  };
-
-  return (
-    <div className={`flex items-start gap-3 p-3 rounded-lg ${getPriorityColor()}`}>
-      <span className="text-lg">{getIcon()}</span>
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-}
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
@@ -97,7 +65,7 @@ export default function Dashboard() {
         
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
-          // Redirect to login page
+          console.log('No user found, redirect to login');
           window.location.href = '/login';
           return;
         }
@@ -106,20 +74,15 @@ export default function Dashboard() {
 
         // Load user profile
         const userProfile = await dbService.getUserProfile(user.id);
-        
-        // If no profile exists or user hasn't completed onboarding, redirect
-        if (!userProfile || !userProfile.full_name) {
-          window.location.href = '/onboarding';
-          return;
+        if (userProfile) {
+          setProfile(userProfile);
         }
-        
-        setProfile(userProfile);
 
         // Load recent activities
-        const recentActivities = await dbService.getHealthActivities(user.id, 10);
+        const recentActivities = await dbService.getHealthActivities(user.id, 20);
         setActivities(recentActivities);
 
-        // Load daily stats
+        // Get today's date for daily stats
         const today = new Date().toISOString().split('T')[0];
         const stats = await dbService.getDailyStats(user.id, today);
         setDailyStats(stats);
@@ -146,57 +109,150 @@ export default function Dashboard() {
     initializeDashboard();
   }, []);
 
-  // Compute activity metrics from real data
-  const activityMetrics = [
-    { 
-      label: "Move", 
-      value: dailyStats?.totalCalories?.toString() || "0", 
-      trend: Math.round((dailyStats?.totalCalories || 0) / 20), // Rough percentage
-      unit: "cal" as const 
-    },
-    { 
-      label: "Exercise", 
-      value: activities.filter(a => a.type === 'workout').length.toString(), 
-      trend: 75, // TODO: Calculate based on goals
-      unit: "min" as const 
-    },
-    { 
-      label: "Stand", 
-      value: dailyStats?.totalActivities?.toString() || "0", 
-      trend: 80, // TODO: Calculate based on goals
-      unit: "hrs" as const 
-    },
-  ];
+  // Generate AI insights when data is ready
+  useEffect(() => {
+    const generateInsights = async () => {
+      if (activities.length > 0 && profile) {
+        try {
+          const processor = new HealthDataProcessor(profile, activities);
+          const todayData = processor.processToday();
+          
+          // Try AI insights first
+          try {
+            const response = await fetch('/api/ai/insights', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ 
+                processedData: todayData,
+                profile: profile 
+              }),
+            });
 
-  // Generate timeline data from activities
-  const timelineData = activities.slice(0, 5).map(activity => ({
-    title: new Date(activity.activity_date).toLocaleTimeString('en-US', { 
+            if (response.ok) {
+              const result = await response.json();
+              if (result.success && result.data?.insights) {
+                setInsights(result.data.insights.map((insight: any) => insight.message));
+                return;
+              }
+            }
+          } catch (aiError) {
+            console.warn('AI insights failed, using fallback:', aiError);
+          }
+
+          // Fallback to static insights
+          const staticInsights = processor.generateInsights(todayData);
+          setInsights(staticInsights);
+          
+        } catch (error) {
+          console.error('Failed to generate any insights:', error);
+          setInsights([
+            "Keep up the great work with your health tracking!",
+            "Every small step towards your goals counts."
+          ]);
+        }
+      }
+    };
+
+    generateInsights();
+  }, [activities, profile]);
+
+  // Filter today's activities
+  const today = new Date().toISOString().split('T')[0];
+  const todaysActivities = activities.filter(activity => 
+    activity.activity_date.startsWith(today)
+  );
+
+  // Process today's health data using HealthDataProcessor
+  const processor = new HealthDataProcessor(profile, activities);
+  const todayData = processor.processToday();
+  
+  // Calculate new metrics using processed data
+  const calculateNewMetrics = () => {
+    const { metrics } = todayData;
+
+    return [
+      { 
+        label: "Calorie Deficit", 
+        value: metrics.calorieDeficit.value.toString(), 
+        trend: metrics.calorieDeficit.percentage,
+        unit: "cal" as const 
+      },
+      { 
+        label: "Protein", 
+        value: `${metrics.protein.consumed}/${metrics.protein.goal}`, 
+        trend: metrics.protein.percentage, 
+        unit: "g" as const 
+      },
+      { 
+        label: "Steps", 
+        value: metrics.steps.count > 0 ? metrics.steps.count.toString() : "0", 
+        trend: metrics.steps.percentage, 
+        unit: "steps" as const 
+      },
+      { 
+        label: "Exercise", 
+        value: metrics.exercise.duration.toString(), 
+        trend: metrics.exercise.percentage, 
+        unit: "min" as const 
+      },
+    ];
+  };
+
+  const activityMetrics = calculateNewMetrics();
+
+  // Generate timeline data from activities with date info
+  const timelineData = activities.slice(0, 5).map(activity => {
+    const activityDate = new Date(activity.activity_date);
+    const isToday = activityDate.toDateString() === new Date().toDateString();
+    const isYesterday = activityDate.toDateString() === new Date(Date.now() - 86400000).toDateString();
+    
+    let dayLabel = '';
+    if (isToday) {
+      dayLabel = 'Today';
+    } else if (isYesterday) {
+      dayLabel = 'Yesterday';  
+    } else {
+      dayLabel = activityDate.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    }
+    
+    const timeLabel = activityDate.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit' 
-    }),
-    content: (
-      <div className="flex items-center gap-3 py-2">
-        <span className="text-2xl">
-          {activity.type === 'meal' ? '🍽️' : 
-           activity.type === 'workout' ? '🏃‍♀️' : 
-           activity.type === 'water_intake' ? '💧' : '📝'}
-        </span>
-        <div>
-          <h4 className="font-medium">{activity.title}</h4>
-          <p className="text-sm text-muted-foreground">{activity.description}</p>
-          {activity.calories_estimated && (
-            <p className="text-xs text-orange-600 font-medium">{activity.calories_estimated} cal</p>
-          )}
-        </div>
-      </div>
-    )
-  }));
+    });
 
+    return {
+      title: `${dayLabel} ${timeLabel}`,
+      content: (
+        <div className="flex items-center gap-3 py-2">
+          <span className="text-2xl">
+            {activity.type === 'meal' ? '🍽️' : 
+             activity.type === 'workout' ? '🏃‍♀️' : 
+             activity.type === 'water_intake' ? '💧' : '📝'}
+          </span>
+          <div>
+            <h4 className="font-medium">{activity.title}</h4>
+            <p className="text-sm text-muted-foreground">{activity.description}</p>
+            {activity.calories_estimated && (
+              <p className="text-xs text-orange-600 font-medium">{activity.calories_estimated} cal</p>
+            )}
+          </div>
+        </div>
+      )
+    };
+  });
+
+  // Use processed data for daily goals - Focus on app engagement
   const dailyGoals = [
-    { id: "1", title: "Log 3 meals", isCompleted: activities.filter(a => a.type === 'meal').length >= 3 },
-    { id: "2", title: "Record workout", isCompleted: activities.some(a => a.type === 'workout') },
-    { id: "3", title: "Track hydration", isCompleted: activities.some(a => a.type === 'water_intake') },
+    { id: "1", title: "Log 3 meals", isCompleted: todayData.goals.mealsLogged },
   ];
+
+  // State for AI insights
+  const [insights, setInsights] = useState<string[]>([]);
 
   if (loading) {
     return (
@@ -213,7 +269,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">Error: {error}</p>
+          <p className="text-red-600 mb-4">{error}</p>
           <button 
             onClick={() => window.location.reload()} 
             className="px-4 py-2 bg-blue-600 text-white rounded-lg"
@@ -229,13 +285,12 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Welcome to Fitally</h1>
-          <p className="text-gray-600 mb-4">Please sign in to view your dashboard</p>
+          <p className="text-gray-600 mb-4">Please log in to view your dashboard</p>
           <button 
             onClick={() => window.location.href = '/login'} 
             className="px-4 py-2 bg-blue-600 text-white rounded-lg"
           >
-            Sign In
+            Go to Login
           </button>
         </div>
       </div>
@@ -247,35 +302,27 @@ export default function Dashboard() {
       {/* Header */}
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border z-40">
         <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-              <span className="text-white text-sm font-semibold">F</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-primary">fitally</h1>
-              <p className="text-xs text-muted-foreground">
-                Welcome, {profile?.full_name || user.email}
-              </p>
-            </div>
+          <div>
+            <h1 className="text-xl font-semibold">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Your health progress today</p>
           </div>
-          <button className="p-2 hover:bg-muted rounded-full">
-            <span className="text-lg">🔔</span>
-          </button>
+          <div className="text-sm text-muted-foreground">
+            {new Date().toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              month: 'short', 
+              day: 'numeric' 
+            })}
+          </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="px-4 py-6 space-y-6">
-        {/* Today Section */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Today</h2>
-          <button className="text-blue-500 text-sm font-medium">Edit</button>
-        </div>
 
-        {/* Activity Card - Using real data */}
+        {/* Activity Card - Using new metrics */}
         <ActivityCard
-          category="Daily Activity"
-          title="Today's Progress"
+          category="Daily Progress"
+          title="Health Metrics"
           metrics={activityMetrics}
           dailyGoals={dailyGoals}
           onAddGoal={() => console.log("Add goal")}
@@ -287,54 +334,54 @@ export default function Dashboard() {
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
           <SimpleCard
-            title="Calories Today"
-            value={dailyStats?.totalCalories?.toString() || "0"}
-            subtitle="Tracked activities"
-            trend={`${activities.length} logged`}
+            title="BMR Today"
+            value={todayData.metrics.calorieDeficit.bmr.toString()}
+            subtitle="Base metabolic rate"
+            trend={`TDEE: ${todayData.metrics.calorieDeficit.tdee} cal`}
           />
           <SimpleCard
-            title="Activities"
-            value={dailyStats?.totalActivities?.toString() || "0"}
-            subtitle="Total logged today"
-            trend={Object.keys(dailyStats?.typeBreakdown || {}).length > 0 ? 
-              `${Object.keys(dailyStats.typeBreakdown).length} types` : "Start logging!"}
+            title="Protein Sources"
+            value={todayData.metrics.protein.sources.length.toString()}
+            subtitle="Variety tracked"
+            trend={todayData.metrics.protein.sources.length > 0 ? 
+              todayData.metrics.protein.sources.slice(0, 2).join(', ') : 'No sources yet'}
           />
         </div>
 
-        {/* AI Smart Suggestions */}
-        {suggestions.length > 0 && (
+        {/* AI Smart Insights */}
+        {(insights.length > 0 || suggestions.length > 0) && (
           <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">💡 AI Recommendations</h3>
+            <h3 className="text-lg font-semibold mb-4">AI Insights</h3>
             <div className="space-y-3">
-              {suggestions.slice(0, 3).map((suggestion, index) => (
-                <AISuggestion
-                  key={index}
-                  type={suggestion.type}
-                  title={suggestion.title}
-                  description={suggestion.description}
-                  priority={suggestion.priority}
-                />
+              {/* Show generated insights first */}
+              {insights.slice(0, 2).map((insight, index) => (
+                <div key={`insight-${index}`} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                  <span className="text-lg">🎯</span>
+                  <div>
+                    <p className="text-sm font-medium">Health Insight</p>
+                    <p className="text-xs text-muted-foreground">{insight}</p>
+                  </div>
+                </div>
+              ))}
+              {/* Show AI suggestions if available */}
+              {suggestions.slice(0, Math.max(0, 3 - insights.length)).map((suggestion, index) => (
+                <div key={`suggestion-${index}`} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                  <span className="text-lg">💡</span>
+                  <div>
+                    <p className="text-sm font-medium">{suggestion.title || 'AI Suggestion'}</p>
+                    <p className="text-xs text-muted-foreground">{suggestion.description || suggestion}</p>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Activity Timeline - Real data */}
+        {/* Recent Activity Timeline */}
         {timelineData.length > 0 && (
           <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">Recent Activities</h3>
-            <div className="space-y-4">
-              {timelineData.map((activity, index) => (
-                <div key={index} className="flex items-start gap-3 py-2 border-l-2 border-primary/20 pl-4">
-                  <span className="text-xs text-muted-foreground font-medium min-w-[60px]">
-                    {activity.title}
-                  </span>
-                  <div className="flex-1">
-                    {activity.content}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+            <Timeline data={timelineData} />
           </div>
         )}
 
@@ -363,21 +410,21 @@ export default function Dashboard() {
               value={activities.length.toString()}
               subtitle="This session"
               trend="Keep it up!"
-              className="h-20"
+              className="min-h-[100px] flex flex-col justify-between"
             />
             <SimpleCard
               title="Types Logged"
               value={Object.keys(dailyStats?.typeBreakdown || {}).length.toString()}
               subtitle="Activity variety"
               trend="Diversify more!"
-              className="h-20"
+              className="min-h-[100px] flex flex-col justify-between"
             />
           </div>
         </div>
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
         <Dock items={dockItems} />
       </div>
     </div>
