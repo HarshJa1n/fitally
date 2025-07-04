@@ -346,11 +346,11 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
 
           {/* Breakfast */}
           <div className="border rounded-lg p-4">
-            <button
-              onClick={() => toggleSection('breakfast')}
-              className="flex items-center justify-between w-full"
-            >
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between w-full">
+              <div 
+                className="flex items-center gap-3 flex-1 cursor-pointer"
+                onClick={() => toggleSection('breakfast')}
+              >
                 <span className="text-2xl">🌅</span>
                 <div className="text-left">
                   <h4 className="font-medium">Breakfast</h4>
@@ -363,11 +363,15 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
                 <Switch
                   checked={preferences.breakfast.enabled}
                   onCheckedChange={(checked) => updateMealPreference('breakfast', 'enabled', checked)}
-                  onClick={(e) => e.stopPropagation()}
                 />
-                {expandedSections.breakfast ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                <button
+                  onClick={() => toggleSection('breakfast')}
+                  className="p-1 hover:bg-muted rounded-sm"
+                >
+                  {expandedSections.breakfast ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
               </div>
-            </button>
+            </div>
 
             {expandedSections.breakfast && preferences.breakfast.enabled && (
               <div className="mt-4 space-y-4">
@@ -398,11 +402,11 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
 
           {/* Lunch */}
           <div className="border rounded-lg p-4">
-            <button
-              onClick={() => toggleSection('lunch')}
-              className="flex items-center justify-between w-full"
-            >
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between w-full">
+              <div 
+                className="flex items-center gap-3 flex-1 cursor-pointer"
+                onClick={() => toggleSection('lunch')}
+              >
                 <span className="text-2xl">🥗</span>
                 <div className="text-left">
                   <h4 className="font-medium">Lunch</h4>
@@ -415,11 +419,15 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
                 <Switch
                   checked={preferences.lunch.enabled}
                   onCheckedChange={(checked) => updateMealPreference('lunch', 'enabled', checked)}
-                  onClick={(e) => e.stopPropagation()}
                 />
-                {expandedSections.lunch ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                <button
+                  onClick={() => toggleSection('lunch')}
+                  className="p-1 hover:bg-muted rounded-sm"
+                >
+                  {expandedSections.lunch ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
               </div>
-            </button>
+            </div>
 
             {expandedSections.lunch && preferences.lunch.enabled && (
               <div className="mt-4 space-y-4">
@@ -450,11 +458,11 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
 
           {/* Dinner */}
           <div className="border rounded-lg p-4">
-            <button
-              onClick={() => toggleSection('dinner')}
-              className="flex items-center justify-between w-full"
-            >
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between w-full">
+              <div 
+                className="flex items-center gap-3 flex-1 cursor-pointer"
+                onClick={() => toggleSection('dinner')}
+              >
                 <span className="text-2xl">🍽️</span>
                 <div className="text-left">
                   <h4 className="font-medium">Dinner</h4>
@@ -467,11 +475,15 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
                 <Switch
                   checked={preferences.dinner.enabled}
                   onCheckedChange={(checked) => updateMealPreference('dinner', 'enabled', checked)}
-                  onClick={(e) => e.stopPropagation()}
                 />
-                {expandedSections.dinner ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                <button
+                  onClick={() => toggleSection('dinner')}
+                  className="p-1 hover:bg-muted rounded-sm"
+                >
+                  {expandedSections.dinner ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
               </div>
-            </button>
+            </div>
 
             {expandedSections.dinner && preferences.dinner.enabled && (
               <div className="mt-4 space-y-4">
@@ -502,11 +514,11 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
 
           {/* Snacks */}
           <div className="border rounded-lg p-4">
-            <button
-              onClick={() => toggleSection('snacks')}
-              className="flex items-center justify-between w-full"
-            >
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between w-full">
+              <div 
+                className="flex items-center gap-3 flex-1 cursor-pointer"
+                onClick={() => toggleSection('snacks')}
+              >
                 <span className="text-2xl">🍎</span>
                 <div className="text-left">
                   <h4 className="font-medium">Snacks</h4>
@@ -522,11 +534,15 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
                 <Switch
                   checked={preferences.snacks.enabled}
                   onCheckedChange={(checked) => updateMealPreference('snacks', 'enabled', checked)}
-                  onClick={(e) => e.stopPropagation()}
                 />
-                {expandedSections.snacks ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                <button
+                  onClick={() => toggleSection('snacks')}
+                  className="p-1 hover:bg-muted rounded-sm"
+                >
+                  {expandedSections.snacks ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
               </div>
-            </button>
+            </div>
 
             {expandedSections.snacks && preferences.snacks.enabled && (
               <div className="mt-4 space-y-4">
