@@ -1,7 +1,7 @@
 {
   "name": "Fitally - AI Health Tracker",
   "short_name": "Fitally",
-  "description": "Your personal AI health companion. Track activities with photos, voice, and text.",
+  "description": "Your personal AI health companion. Track activities with photos, voice, and text. Get smart meal reminders to stay on track.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -27,5 +27,33 @@
   ],
   "categories": ["health", "fitness", "lifestyle"],
   "lang": "en",
-  "scope": "/"
+  "scope": "/",
+  "shortcuts": [
+    {
+      "name": "Quick Food Log",
+      "short_name": "Log Food",
+      "description": "Quickly log your meal",
+      "url": "/capture?type=food",
+      "icons": [
+        {
+          "src": "/favicon.ico",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your health metrics",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/favicon.ico",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
 } 
