@@ -2,9 +2,9 @@ const CACHE_NAME = 'fitally-v1';
 const urlsToCache = [
   '/',
   '/capture',
-  '/dashboard',
   '/analytics',
-  '/offline.html'
+  '/profile',
+  '/favicon.ico'
 ];
 
 // Install event - cache essential resources
@@ -13,7 +13,21 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache');
-        return cache.addAll(urlsToCache);
+        // Cache each URL individually to avoid failing on one bad URL
+        return Promise.allSettled(
+          urlsToCache.map(url => 
+            cache.add(url).catch(err => {
+              console.warn(`Failed to cache ${url}:`, err);
+              return null;
+            })
+          )
+        );
+      })
+      .then(() => {
+        console.log('Service Worker: Install Complete');
+      })
+      .catch(err => {
+        console.error('Service Worker: Install Failed', err);
       })
   );
   self.skipWaiting();

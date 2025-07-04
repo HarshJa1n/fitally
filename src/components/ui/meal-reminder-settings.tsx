@@ -82,8 +82,11 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
   };
 
   const checkPermissionState = async () => {
+    console.log('Component: Checking permission state...');
     const state = await pushNotificationManager.getPermissionState();
+    console.log('Component: Got permission state:', state);
     setPermissionState(state);
+    console.log('Component: State updated, supported:', state.supported);
   };
 
   const handlePermissionRequest = async () => {
@@ -239,7 +242,10 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
   }
 
   // Show not supported message only after checking
+  console.log('Component render: isInitializing:', isInitializing, 'supported:', permissionState.supported, 'permission:', permissionState.permission);
+  
   if (!permissionState.supported) {
+    console.log('Component: Rendering not supported message');
     return (
       <Card className={className}>
         <CardHeader>
@@ -265,6 +271,8 @@ export function MealReminderSettings({ className }: MealReminderSettingsProps) {
     );
   }
 
+  console.log('Component: Rendering main settings UI');
+  
   return (
     <Card className={className}>
       <CardHeader>
