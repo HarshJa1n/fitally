@@ -166,11 +166,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Schedule notifications based on the new preferences
-    // This would integrate with a job scheduler in production
     console.log('Meal reminder preferences updated for user:', user.id);
     
-    // TODO: Integrate with scheduling system (cron jobs, background tasks, etc.)
-    // For now, we'll just log that scheduling should happen here
+    // Call the scheduling service to update user's notification schedule
+    try {
+      await scheduleUserNotifications(user.id, dbPreferences);
+      console.log('Successfully scheduled notifications for user:', user.id);
+    } catch (scheduleError) {
+      console.error('Error scheduling notifications:', scheduleError);
+      // Don't fail the request if scheduling fails - preferences are still saved
+    }
     
     return NextResponse.json({
       success: true,
@@ -225,5 +230,49 @@ export async function DELETE(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Schedule notifications for a user by triggering the edge function
+ * This function calls the meal reminder scheduler to update the user's notification schedule
+ */
+async function scheduleUserNotifications(userId: string, preferences: any) {
+  try {
+    // Call the edge function to trigger immediate scheduling calculation
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.warn('Missing Supabase configuration for scheduling');
+      return;
+    }
+
+    const functionUrl = `${supabaseUrl}/functions/v1/meal-reminder-scheduler`;
+    
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({
+        userId,
+        preferences,
+        immediate: true // Flag to indicate this is an immediate update
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Edge function call failed: ${response.status} ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('Edge function response:', result);
+    
+  } catch (error) {
+    console.error('Error calling scheduling service:', error);
+    throw error;
   }
 } 
