@@ -1,7 +1,10 @@
 import {
   calculateBMR,
   calculateTDEE,
-  calculateCalorieDeficit,
+  calculateNetCalorieBalance,
+  calculateCalorieProgress,
+  getDailyCalorieGoal,
+  calculateCalorieBudget,
 } from "../lib/utils/health-calculations";
 import type { Profile } from "../types/database";
 
@@ -15,7 +18,7 @@ describe("Health Calculations", () => {
     height_cm: 180,
     weight_kg: 75,
     activity_level: "moderately_active",
-    fitness_goals: [],
+    fitness_goals: ['general_fitness'],
     dietary_preferences: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -37,21 +40,51 @@ describe("Health Calculations", () => {
     expect(tdee).toBe(Math.round(1710 * 1.55)); // 2650.5 -> 2651
   });
 
-  // 3. Test Calorie Deficit Calculation (This will fail initially)
-  test("should calculate calorie deficit correctly without double counting workouts", () => {
+  // 3. Test Net Calorie Balance Calculation
+  test("should calculate net calorie balance correctly", () => {
     const bmr = 1710;
-    const foodCalories = 2000;
+    const workoutCaloriesBurned = 300;
+    const foodCaloriesConsumed = 2000;
 
-    // TDEE = 2651
-    // Deficit should be TDEE - foodCalories = 2651 - 2000 = 651
-    const deficit = calculateCalorieDeficit(
+    // Net balance = foodCaloriesConsumed - (bmr + workoutCaloriesBurned)
+    // = 2000 - (1710 + 300) = 2000 - 2010 = -10
+    const netBalance = calculateNetCalorieBalance(
       bmr,
-      "moderately_active",
-      foodCalories
+      workoutCaloriesBurned,
+      foodCaloriesConsumed
     );
 
-    // The current logic does: (TDEE + workoutCalories) - foodCalories = (2651 + 300) - 2000 = 951
-    // The test expects the correct logic: TDEE - foodCalories = 651
-    expect(deficit).toBe(651);
+    expect(netBalance).toBe(-10);
+  });
+
+  // 4. Test Daily Calorie Goal
+  test("should determine correct calorie goals based on fitness goals", () => {
+    expect(getDailyCalorieGoal(['weight_loss'])).toBe(-400);
+    expect(getDailyCalorieGoal(['weight_gain'])).toBe(300);
+    expect(getDailyCalorieGoal(['muscle_building'])).toBe(300);
+    expect(getDailyCalorieGoal(['cardiovascular_health'])).toBe(0);
+    expect(getDailyCalorieGoal([])).toBe(0);
+  });
+
+  // 5. Test Calorie Budget Calculation
+  test("should calculate calorie budget correctly", () => {
+    const bmr = 1710;
+    const budget = calculateCalorieBudget(bmr, "moderately_active", ['weight_loss']);
+    // TDEE = 1710 * 1.55 = 2651, Goal adjustment = -400
+    // Budget = 2651 + (-400) = 2251
+    expect(budget).toBe(2251);
+  });
+
+  // 6. Test Calorie Progress Calculation
+  test("should calculate calorie progress correctly", () => {
+    const netBalance = -10; // Slight deficit
+    const goal = -400; // Weight loss goal
+    
+    const progress = calculateCalorieProgress(netBalance, goal);
+    
+    // Progress value = goal - netBalance = -400 - (-10) = -390
+    expect(progress.progressValue).toBe(-390);
+    expect(progress.isOnTrack).toBe(false); // Not within 100 calories
+    expect(progress.progressPercentage).toBeGreaterThan(0);
   });
 }); 

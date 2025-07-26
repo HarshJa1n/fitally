@@ -6,6 +6,7 @@ import { Dock } from "@/components/ui/dock-two";
 import { ActivityCard } from "@/components/ui/activity-card";
 import { Timeline } from "@/components/ui/timeline";
 import { Card } from "@/components/ui/card";
+import { CalorieMeter } from "@/components/ui/calorie-meter";
 import { dbService } from "@/lib/supabase/database";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database, HealthActivity, Profile } from "@/types/database";
@@ -44,6 +45,19 @@ function SimpleCard({ title, value, subtitle, trend, className }: {
 }
 
 
+
+// Helper function for time-based greeting
+function getTimeBasedGreeting(): string {
+  const hour = new Date().getHours();
+  
+  if (hour < 12) {
+    return "Good Morning";
+  } else if (hour < 17) {
+    return "Good Afternoon";
+  } else {
+    return "Good Evening";
+  }
+}
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
@@ -172,29 +186,39 @@ export default function Dashboard() {
   const calculateNewMetrics = () => {
     const { metrics } = todayData;
 
+    // Safety check for calories data
+    if (!metrics?.calories) {
+      return [
+        { label: "Calorie Intake", value: "0/0", trend: 0, unit: "cal" as const },
+        { label: "Protein", value: "0/60", trend: 0, unit: "g" as const },
+        { label: "Steps", value: "0", trend: 0, unit: "steps" as const },
+        { label: "Exercise", value: "0", trend: 0, unit: "min" as const }
+      ];
+    }
+
     return [
       { 
-        label: "Calorie Deficit", 
-        value: metrics.calorieDeficit.value.toString(), 
-        trend: metrics.calorieDeficit.percentage,
+        label: "Calorie Intake", 
+        value: `${metrics.calories.foodCaloriesConsumed || 0}/${metrics.calories.budget || 0}`, 
+        trend: Math.round(((metrics.calories.foodCaloriesConsumed || 0) / (metrics.calories.budget || 1)) * 100),
         unit: "cal" as const 
       },
       { 
         label: "Protein", 
         value: `${metrics.protein.consumed}/${metrics.protein.goal}`, 
-        trend: metrics.protein.percentage, 
+        trend: Math.round((metrics.protein.percentage || 0) * 100) / 100, 
         unit: "g" as const 
       },
       { 
         label: "Steps", 
         value: metrics.steps.count > 0 ? metrics.steps.count.toString() : "0", 
-        trend: metrics.steps.percentage, 
+        trend: Math.round((metrics.steps.percentage || 0) * 100) / 100, 
         unit: "steps" as const 
       },
       { 
         label: "Exercise", 
         value: metrics.exercise.duration.toString(), 
-        trend: metrics.exercise.percentage, 
+        trend: Math.round((metrics.exercise.percentage || 0) * 100) / 100, 
         unit: "min" as const 
       },
     ];
@@ -303,7 +327,7 @@ export default function Dashboard() {
       <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border z-40">
         <div className="flex items-center justify-between p-4">
           <div>
-            <h1 className="text-xl font-semibold">Dashboard</h1>
+            <h1 className="text-xl font-semibold">{getTimeBasedGreeting()}</h1>
             <p className="text-sm text-muted-foreground">Your health progress today</p>
           </div>
           <div className="text-sm text-muted-foreground">
@@ -332,19 +356,52 @@ export default function Dashboard() {
         />
 
         {/* Quick Stats Grid */}
+        {/* Calorie Meter */}
+        <div className="bg-card border border-border rounded-xl shadow-sm">
+          <CalorieMeter
+            netBalance={todayData.metrics.calories?.netBalance || 0}
+            goal={todayData.metrics.calories?.goal || 0}
+            budget={todayData.metrics.calories?.budget || 0}
+            foodCalories={todayData.metrics.calories?.foodCaloriesConsumed || 0}
+            workoutCalories={todayData.metrics.calories?.workoutCaloriesBurned || 0}
+            bmr={todayData.metrics.calories?.bmr || 0}
+          />
+        </div>
+
+        {/* Quick Action Buttons */}
+        <div className="flex gap-2 justify-center">
+          <button
+            onClick={() => window.location.href = '/capture?type=meal'}
+            className="flex-1 max-w-[120px] h-12 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center"
+            title="Add Food"
+          >
+            <span className="text-2xl">🍽️</span>
+            <span className="text-xl ml-1">+</span>
+          </button>
+          <button
+            onClick={() => window.location.href = '/capture?type=workout'}
+            className="flex-1 max-w-[120px] h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center"
+            title="Add Workout"
+          >
+            <span className="text-2xl">🏃‍♀️</span>
+            <span className="text-xl ml-1">+</span>
+          </button>
+        </div>
+
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
           <SimpleCard
             title="BMR Today"
-            value={todayData.metrics.calorieDeficit.bmr.toString()}
+            value={(todayData.metrics.calories?.bmr || 0).toString()}
             subtitle="Base metabolic rate"
-            trend={`TDEE: ${todayData.metrics.calorieDeficit.tdee} cal`}
+            trend={`Budget: ${todayData.metrics.calories?.budget || 0} cal`}
           />
           <SimpleCard
             title="Protein Sources"
-            value={todayData.metrics.protein.sources.length.toString()}
+            value={(todayData.metrics.protein?.sources?.length || 0).toString()}
             subtitle="Variety tracked"
-            trend={todayData.metrics.protein.sources.length > 0 ? 
-              todayData.metrics.protein.sources.slice(0, 2).join(', ') : 'No sources yet'}
+            trend={(todayData.metrics.protein?.sources?.length || 0) > 0 ? 
+              (todayData.metrics.protein?.sources?.slice(0, 2).join(', ') || 'None') : 'No sources yet'}
           />
         </div>
 

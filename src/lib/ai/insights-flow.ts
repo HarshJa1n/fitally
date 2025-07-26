@@ -7,13 +7,16 @@ import type { DailyProcessedData } from '@/lib/processors/health-data-processor'
 export const InsightsInputSchema = z.object({
   date: z.string(),
   metrics: z.object({
-    calorieDeficit: z.object({
-      value: z.number(),
+    calories: z.object({
+      netBalance: z.number(),
+      goal: z.number(),
+      budget: z.number(),
       bmr: z.number(),
-      tdee: z.number(),
-      workoutCalories: z.number(),
-      foodCalories: z.number(),
-      percentage: z.number(),
+      workoutCaloriesBurned: z.number(),
+      foodCaloriesConsumed: z.number(),
+      progressValue: z.number(),
+      progressPercentage: z.number(),
+      isOnTrack: z.boolean(),
     }),
     protein: z.object({
       consumed: z.number(),
@@ -44,7 +47,7 @@ export const InsightsInputSchema = z.object({
     mealsLogged: z.boolean(),
     workoutCompleted: z.boolean(),
     proteinTarget: z.boolean(),
-    calorieDeficit: z.boolean(),
+    calorieGoal: z.boolean(),
   }),
 });
 
@@ -120,11 +123,13 @@ function createInsightsPrompt(input: InsightsInput): string {
   return `Analyze the following health data for ${input.date} and provide personalized insights:
 
 **Daily Metrics:**
-- Calorie Deficit: ${metrics.calorieDeficit.value} cal (${metrics.calorieDeficit.percentage}% of goal)
-  - BMR: ${metrics.calorieDeficit.bmr} cal
-  - TDEE: ${metrics.calorieDeficit.tdee} cal
-  - Workout: ${metrics.calorieDeficit.workoutCalories} cal burned
-  - Food: ${metrics.calorieDeficit.foodCalories} cal consumed
+- Calorie Balance: ${metrics.calories.netBalance} cal (Goal: ${metrics.calories.goal} cal)
+  - Progress: ${metrics.calories.progressPercentage}% toward goal
+  - BMR: ${metrics.calories.bmr} cal
+  - Budget: ${metrics.calories.budget} cal
+  - Workout: ${metrics.calories.workoutCaloriesBurned} cal burned
+  - Food: ${metrics.calories.foodCaloriesConsumed} cal consumed
+  - On Track: ${metrics.calories.isOnTrack ? 'Yes' : 'No'}
 
 - Protein: ${metrics.protein.consumed}g/${metrics.protein.goal}g (${metrics.protein.percentage}%)
   - Sources: ${metrics.protein.sources.join(', ') || 'None logged'}
@@ -145,7 +150,7 @@ function createInsightsPrompt(input: InsightsInput): string {
 - Meals logged (3+): ${goals.mealsLogged ? 'Yes' : 'No'}
 - Workout completed: ${goals.workoutCompleted ? 'Yes' : 'No'}
 - Protein target: ${goals.proteinTarget ? 'Yes' : 'No'}
-- Calorie deficit: ${goals.calorieDeficit ? 'Yes' : 'No'}
+- Calorie goal: ${goals.calorieGoal ? 'Yes' : 'No'}
 
 Please provide:
 1. 3-5 specific, personalized insights based on the data

@@ -1,7 +1,10 @@
 import type { HealthActivity, Profile } from "@/types/database";
 import { 
   calculateBMR, 
-  calculateCalorieDeficit, 
+  calculateNetCalorieBalance,
+  calculateCalorieProgress,
+  getDailyCalorieGoal,
+  calculateCalorieBudget,
   calculateDailyProtein, 
   calculateDailySteps, 
   calculateWorkoutDuration, 
@@ -10,13 +13,16 @@ import {
 } from "@/lib/utils/health-calculations";
 
 export interface ProcessedHealthMetrics {
-  calorieDeficit: {
-    value: number;
+  calories: {
+    netBalance: number;
+    goal: number;
+    budget: number;
     bmr: number;
-    tdee: number;
-    workoutCalories: number;
-    foodCalories: number;
-    percentage: number;
+    workoutCaloriesBurned: number;
+    foodCaloriesConsumed: number;
+    progressValue: number;
+    progressPercentage: number;
+    isOnTrack: boolean;
   };
   protein: {
     consumed: number;
@@ -51,7 +57,7 @@ export interface DailyProcessedData {
     mealsLogged: boolean;
     workoutCompleted: boolean;
     proteinTarget: boolean;
-    calorieDeficit: boolean;
+    calorieGoal: boolean;
   };
 }
 
@@ -114,12 +120,26 @@ export class HealthDataProcessor {
 
     // Calorie calculations
     const bmr = calculateBMR(this.profile);
-    const workoutCalories = calculateWorkoutCalories(activities);
-    const foodCalories = calculateFoodCalories(activities);
-    const calorieDeficit = calculateCalorieDeficit(
+    const workoutCaloriesBurned = calculateWorkoutCalories(activities);
+    const foodCaloriesConsumed = calculateFoodCalories(activities);
+    const fitnessGoals = this.profile.fitness_goals || [];
+    
+    const netCalorieBalance = calculateNetCalorieBalance(
+      bmr,
+      workoutCaloriesBurned,
+      foodCaloriesConsumed
+    );
+    
+    const dailyCalorieGoal = getDailyCalorieGoal(fitnessGoals);
+    const calorieBudget = calculateCalorieBudget(
       bmr,
       this.profile.activity_level || 'moderately_active',
-      foodCalories
+      fitnessGoals
+    );
+    
+    const calorieProgress = calculateCalorieProgress(
+      netCalorieBalance,
+      dailyCalorieGoal
     );
 
     // Protein calculations
@@ -139,13 +159,16 @@ export class HealthDataProcessor {
     const exerciseTypes = this.extractExerciseTypes(activities);
 
     return {
-      calorieDeficit: {
-        value: calorieDeficit,
+      calories: {
+        netBalance: netCalorieBalance,
+        goal: dailyCalorieGoal,
+        budget: calorieBudget,
         bmr,
-        tdee: bmr * this.getActivityMultiplier(this.profile.activity_level || 'moderately_active'),
-        workoutCalories,
-        foodCalories,
-        percentage: Math.max(0, Math.min(100, (calorieDeficit / 500) * 100)) // 500 cal deficit = 100%
+        workoutCaloriesBurned,
+        foodCaloriesConsumed,
+        progressValue: calorieProgress.progressValue,
+        progressPercentage: calorieProgress.progressPercentage,
+        isOnTrack: calorieProgress.isOnTrack
       },
       protein: {
         consumed: proteinConsumed,
@@ -188,17 +211,20 @@ export class HealthDataProcessor {
     const workouts = activities.filter(a => a.type === 'workout');
     const protein = calculateDailyProtein(activities);
     
-    const calorieDeficit = this.profile ? calculateCalorieDeficit(
+    const netBalance = this.profile ? calculateNetCalorieBalance(
       calculateBMR(this.profile),
-      this.profile.activity_level || 'moderately_active',
+      calculateWorkoutCalories(activities),
       calculateFoodCalories(activities)
     ) : 0;
+    
+    const dailyGoal = this.profile ? getDailyCalorieGoal(this.profile.fitness_goals || []) : 0;
+    const calorieProgress = calculateCalorieProgress(netBalance, dailyGoal);
 
     return {
       mealsLogged: meals.length >= 3,
       workoutCompleted: workouts.length > 0,
       proteinTarget: protein >= 60,
-      calorieDeficit: calorieDeficit > 0
+      calorieGoal: calorieProgress.isOnTrack
     };
   }
 
@@ -209,12 +235,25 @@ export class HealthDataProcessor {
     const sources: Set<string> = new Set();
     
     activities.forEach(activity => {
-      if (activity.type === 'meal' && activity.ai_analysis?.foodItems) {
-        activity.ai_analysis.foodItems.forEach((food: { name: string, macros: { protein: number } }) => {
-          if (food.macros?.protein && food.macros.protein > 5) { // At least 5g protein
-            sources.add(food.name);
+      if (activity.type === 'meal') {
+        // Check if there's protein data
+        const hasProtein = activity.nutrition_data?.protein_g || 
+                          activity.ai_analysis?.nutritionalInfo?.macros?.protein;
+        
+        if (hasProtein && hasProtein > 5) {
+          // Use the meal title or description as the source
+          if (activity.title && activity.title !== 'Meal') {
+            sources.add(activity.title);
+          } else if (activity.ai_analysis?.tags) {
+            // Add cuisine type if available
+            const cuisineTags = activity.ai_analysis.tags.filter((tag: string) => 
+              tag.includes('Cuisine') || tag.includes('cuisine')
+            );
+            if (cuisineTags.length > 0) {
+              sources.add(cuisineTags[0]);
+            }
           }
-        });
+        }
       }
     });
     
@@ -309,13 +348,19 @@ export class HealthDataProcessor {
     const insights: string[] = [];
     const { metrics } = processedData;
 
-    // Calorie deficit insights
-    if (metrics.calorieDeficit.value > 1000) {
-      insights.push("Your calorie deficit is quite high. Consider adding a healthy snack.");
-    } else if (metrics.calorieDeficit.value < 0) {
-      insights.push("You're in a calorie surplus today. Consider a light workout or walk.");
-    } else if (metrics.calorieDeficit.value > 300 && metrics.calorieDeficit.value <= 500) {
-      insights.push("Great job maintaining a healthy calorie deficit!");
+    // Calorie balance insights
+    const { netBalance, goal, isOnTrack } = metrics.calories;
+    
+    if (isOnTrack) {
+      insights.push("Perfect! You're right on track with your calorie goal.");
+    } else if (goal < 0 && netBalance > 0) {
+      // Weight loss goal but in surplus
+      insights.push("You're in a calorie surplus. Consider adding a workout or reducing portions.");
+    } else if (goal > 0 && netBalance < -200) {
+      // Weight gain goal but large deficit
+      insights.push("You're not eating enough for your weight gain goal. Add a healthy snack.");
+    } else if (Math.abs(netBalance - goal) > 300) {
+      insights.push("You're quite far from your calorie goal. Small adjustments can help!");
     }
 
     // Protein insights

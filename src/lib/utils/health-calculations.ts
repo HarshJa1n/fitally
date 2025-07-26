@@ -29,6 +29,7 @@ export function calculateBMR(profile: Profile): number {
 
 /**
  * Calculate TDEE (Total Daily Energy Expenditure) by applying activity multiplier
+ * Note: This represents base daily activity, separate from logged workouts
  */
 export function calculateTDEE(bmr: number, activityLevel: string): number {
   const multipliers = {
@@ -44,18 +45,77 @@ export function calculateTDEE(bmr: number, activityLevel: string): number {
 }
 
 /**
- * Calculate calorie deficit for the day
- * Positive = deficit, Negative = surplus
+ * Calculate daily calorie budget based on goals
+ * Returns the target daily calorie intake
  */
-export function calculateCalorieDeficit(
+export function calculateCalorieBudget(
   bmr: number,
   activityLevel: string,
-  foodCalories: number
+  fitnessGoals: string[]
 ): number {
   const tdee = calculateTDEE(bmr, activityLevel);
-  const deficit = tdee - foodCalories;
+  const goalAdjustment = getDailyCalorieGoal(fitnessGoals);
+  
+  return Math.round(tdee + goalAdjustment);
+}
 
-  return Math.round(deficit);
+/**
+ * Get daily calorie goal based on fitness goals
+ * Returns target calorie deficit/surplus for the day
+ */
+export function getDailyCalorieGoal(fitnessGoals: string[]): number {
+  if (fitnessGoals.includes('weight_loss')) {
+    return -400; // 400 calorie deficit for weight loss
+  } else if (fitnessGoals.includes('weight_gain') || fitnessGoals.includes('muscle_building')) {
+    return 300; // 300 calorie surplus for weight gain
+  }
+  return 0; // Maintenance for other goals
+}
+
+/**
+ * Calculate net calorie balance for the day
+ * Formula: (BMR + Workout Calories Burned) - Food Calories Consumed
+ * Positive = surplus, Negative = deficit
+ */
+export function calculateNetCalorieBalance(
+  bmr: number,
+  workoutCaloriesBurned: number,
+  foodCaloriesConsumed: number
+): number {
+  const totalCaloriesBurned = bmr + workoutCaloriesBurned;
+  const netBalance = foodCaloriesConsumed - totalCaloriesBurned;
+
+  return Math.round(netBalance);
+}
+
+/**
+ * Calculate calorie deficit/surplus relative to goal
+ * Positive = on track toward goal, Negative = away from goal
+ */
+export function calculateCalorieProgress(
+  netCalorieBalance: number,
+  dailyCalorieGoal: number
+): {
+  progressValue: number;
+  isOnTrack: boolean;
+  progressPercentage: number;
+} {
+  // For weight loss goal (negative target), we want negative balance
+  // For weight gain goal (positive target), we want positive balance
+  const progressValue = dailyCalorieGoal - netCalorieBalance;
+  const isOnTrack = Math.abs(progressValue) <= 100; // Within 100 calories of goal
+  
+  // Calculate percentage (100% = perfectly on track)
+  const maxDeviation = 500; // Max expected deviation
+  const progressPercentage = Math.max(0, Math.min(100, 
+    100 - (Math.abs(progressValue) / maxDeviation) * 100
+  ));
+
+  return {
+    progressValue,
+    isOnTrack,
+    progressPercentage
+  };
 }
 
 /**
@@ -65,8 +125,15 @@ export function calculateDailyProtein(activities: HealthActivity[]): number {
   let totalProtein = 0;
 
   activities.forEach((activity) => {
-    if (activity.type === "meal" && activity.nutrition_data?.protein_g) {
-      totalProtein += activity.nutrition_data.protein_g;
+    if (activity.type === "meal") {
+      // Check nutrition_data first
+      if (activity.nutrition_data?.protein_g) {
+        totalProtein += activity.nutrition_data.protein_g;
+      }
+      // Check AI analysis as fallback
+      else if (activity.ai_analysis?.nutritionalInfo?.macros?.protein) {
+        totalProtein += activity.ai_analysis.nutritionalInfo.macros.protein;
+      }
     }
   });
 
@@ -80,11 +147,15 @@ export function calculateWorkoutDuration(activities: HealthActivity[]): number {
   let totalDuration = 0;
 
   activities.forEach((activity) => {
-    if (
-      activity.type === "workout" &&
-      activity.activity_data?.duration_minutes
-    ) {
-      totalDuration += activity.activity_data.duration_minutes;
+    if (activity.type === "workout") {
+      // Check activity_data first
+      if (activity.activity_data?.duration_minutes) {
+        totalDuration += activity.activity_data.duration_minutes;
+      }
+      // Check AI analysis as fallback
+      else if (activity.ai_analysis?.duration?.value) {
+        totalDuration += activity.ai_analysis.duration.value;
+      }
     }
   });
 

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export interface Metric {
   label: string;
   value: string;
-  trend: number;
+  trend: number | string;
   unit?: "cal" | "min" | "hrs" | "g" | "steps";
 }
 
@@ -31,6 +31,7 @@ interface ActivityCardProps {
 
 const METRIC_COLORS = {
   "Calorie Deficit": "#FF6B6B",
+  "Calorie Intake": "#FF6B6B",
   "Protein": "#4ECDC4",
   "Steps": "#45B7D1",
   "Exercise": "#96CEB4",
@@ -98,13 +99,22 @@ export function ActivityCard({
                 )}
                 style={{
                   borderColor: METRIC_COLORS[metric.label as keyof typeof METRIC_COLORS],
-                  clipPath: `polygon(0 0, 100% 0, 100% ${metric.trend}%, 0 ${metric.trend}%)`,
+                  clipPath: `polygon(0 0, 100% 0, 100% ${Number(metric.trend)}%, 0 ${Number(metric.trend)}%)`,
                 }}
               />
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold text-zinc-900 dark:text-white">
-                  {metric.value}
-                </span>
+                <div className="text-2xl font-bold text-zinc-900 dark:text-white flex items-baseline">
+                  {metric.value.includes('/') ? (
+                    <>
+                      <span>{metric.value.split('/')[0]}</span>
+                      <span className="text-base text-zinc-500 dark:text-zinc-400">
+                        /{metric.value.split('/')[1]}
+                      </span>
+                    </>
+                  ) : (
+                    <span>{metric.value}</span>
+                  )}
+                </div>
                 <span className="text-sm text-zinc-500 dark:text-zinc-400">
                   {metric.unit}
                 </span>
@@ -114,7 +124,7 @@ export function ActivityCard({
               {metric.label}
             </span>
             <span className="text-xs text-zinc-500">
-              {metric.trend}%
+              {typeof metric.trend === 'number' ? `${Math.round(metric.trend * 10) / 10}%` : metric.trend}
             </span>
           </div>
         ))}
