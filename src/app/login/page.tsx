@@ -65,19 +65,23 @@ export default function LoginPage() {
           // Try to get user profile to check if onboarding is complete
           const { data: profile } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, onboarding_completed')
             .eq('id', data.user.id)
             .single();
 
-          if (!profile || !profile.onboarding_completed) {
+          if (!profile || profile.onboarding_completed === false) {
             router.push('/onboarding');
           } else {
             router.push('/');
           }
         }
       }
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -96,8 +100,12 @@ export default function LoginPage() {
       });
 
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || 'Google authentication failed');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Google authentication failed');
+      } else {
+        setError("An unknown error occurred");
+      }
       setIsLoading(false);
     }
   };
@@ -115,8 +123,12 @@ export default function LoginPage() {
       });
 
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || 'GitHub authentication failed');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'GitHub authentication failed');
+      } else {
+        setError("An unknown error occurred");
+      }
       setIsLoading(false);
     }
   };

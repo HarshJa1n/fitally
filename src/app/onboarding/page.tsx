@@ -152,6 +152,7 @@ export default function OnboardingPage() {
         activity_level: profileData.fitness_level as any, // Use fitness_level as activity_level
         fitness_goals: profileData.health_goals.length > 0 ? profileData.health_goals : ['general_fitness'],
         dietary_preferences: profileData.dietary_preferences,
+        onboarding_completed: true, // Mark onboarding as complete
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });

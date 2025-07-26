@@ -29,12 +29,12 @@ export default function AuthCallback() {
           // Check if user has a profile (indicates completed onboarding)
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('id, full_name')
+            .select('id, onboarding_completed')
             .eq('id', data.session.user.id)
             .single();
 
-          // If no profile exists or error retrieving it, user needs onboarding
-          if (profileError || !profile || !profile.full_name) {
+          // If no profile exists or onboarding is not complete, redirect to onboarding
+          if (profileError || !profile || profile.onboarding_completed === false) {
             router.push('/onboarding');
           } else {
             router.push('/');

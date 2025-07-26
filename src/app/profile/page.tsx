@@ -1,7 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, User, Target, Settings, Bell, Shield, Info, ChevronRight, Edit3, Save, X } from "lucide-react";
+import {
+  ArrowLeft,
+  User as UserIcon,
+  Target,
+  Settings,
+  Bell,
+  Shield,
+  Info,
+  ChevronRight,
+  Edit3,
+  Save,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,13 +26,27 @@ import { DatabaseService } from "@/lib/supabase/database";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database, Profile } from "@/types/database";
 import { MealReminderSettings } from "@/components/ui/meal-reminder-settings";
+import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 
 const dockItems = [
-  { icon: Home, label: "Dashboard", onClick: () => window.location.href = "/" },
-  { icon: BarChart3, label: "Analytics", onClick: () => window.location.href = "/analytics" },
-  { icon: Plus, label: "Add Activity", onClick: () => window.location.href = "/capture" },
+  {
+    icon: Home,
+    label: "Dashboard",
+    onClick: () => (window.location.href = "/"),
+  },
+  {
+    icon: BarChart3,
+    label: "Analytics",
+    onClick: () => (window.location.href = "/analytics"),
+  },
+  {
+    icon: Plus,
+    label: "Add Activity",
+    onClick: () => (window.location.href = "/capture"),
+  },
   { icon: Calendar, label: "Plan", onClick: () => {} },
-  { icon: User, label: "Profile", onClick: () => {} },
+  { icon: UserIcon, label: "Profile", onClick: () => {} },
 ];
 
 interface UserProfile {
@@ -52,10 +77,11 @@ interface NotificationSettings {
 }
 
 export default function ProfilePage() {
-  const [activeTab, setActiveTab] = useState<'profile' | 'goals' | 'settings'>('profile');
+  const [activeTab, setActiveTab] =
+    useState<"profile" | "goals" | "settings">("profile");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [dbProfile, setDbProfile] = useState<Profile | null>(null);
 
   const [profile, setProfile] = useState<UserProfile>({
@@ -84,6 +110,16 @@ export default function ProfilePage() {
     weeklyReports: true,
     achievementAlerts: true
   });
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    const supabase = createBrowserClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -204,19 +240,21 @@ export default function ProfilePage() {
         return `${birthYear}-01-01`; // Use January 1st as default
       };
 
-      const updatedProfile = {
+      const updatedProfile: Partial<Profile> = {
         id: user.id,
-        email: user.email!, // Required field
+        email: user.email,
         full_name: profile.name || null,
         date_of_birth: ageToDateOfBirth(profile.age),
         height_cm: feetInchesToCm(profile.height),
         weight_kg: lbsToKg(profile.weight),
-        activity_level: profile.activityLevel as any,
+        activity_level: profile.activityLevel as Profile['activity_level'],
         fitness_goals: profile.fitnessGoals,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
-      const result = await db.createOrUpdateProfile(updatedProfile);
+      const result = await db.createOrUpdateProfile(
+        updatedProfile as Profile
+      );
       
       if (result) {
         setDbProfile(result);
@@ -569,6 +607,9 @@ export default function ProfilePage() {
             Privacy Policy
             <ChevronRight className="w-4 h-4" />
           </Button>
+          <Button variant="destructive" className="w-full" onClick={handleLogout}>
+            Logout
+          </Button>
         </CardContent>
       </Card>
     </div>
@@ -601,7 +642,7 @@ export default function ProfilePage() {
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <User className="w-4 h-4 mx-auto mb-1" />
+            <UserIcon className="w-4 h-4 mx-auto mb-1" />
             Profile
           </button>
           <button
