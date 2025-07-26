@@ -1,4 +1,4 @@
-import type { Profile } from "@/types/database";
+import type { Profile, HealthActivity } from "@/types/database";
 
 /**
  * Calculate BMR (Basal Metabolic Rate) using the Mifflin-St Jeor Equation
@@ -50,86 +50,57 @@ export function calculateTDEE(bmr: number, activityLevel: string): number {
 export function calculateCalorieDeficit(
   bmr: number,
   activityLevel: string,
-  workoutCalories: number,
   foodCalories: number
 ): number {
   const tdee = calculateTDEE(bmr, activityLevel);
-  const totalBurned = tdee + workoutCalories;
-  const deficit = totalBurned - foodCalories;
-  
+  const deficit = tdee - foodCalories;
+
   return Math.round(deficit);
 }
 
 /**
- * Extract protein from health activities
+ * Calculate daily protein intake
  */
-export function calculateDailyProtein(activities: any[]): number {
+export function calculateDailyProtein(activities: HealthActivity[]): number {
   let totalProtein = 0;
 
-  activities.forEach(activity => {
-    if (activity.type === 'meal' && activity.ai_analysis?.nutritionalInfo?.macros?.protein) {
-      totalProtein += activity.ai_analysis.nutritionalInfo.macros.protein;
-    }
-    
-    // Also check foodItems array if available
-    if (activity.ai_analysis?.foodItems) {
-      activity.ai_analysis.foodItems.forEach((foodItem: any) => {
-        if (foodItem.macros?.protein) {
-          totalProtein += foodItem.macros.protein;
-        }
-      });
+  activities.forEach((activity) => {
+    if (activity.type === "meal" && activity.nutrition_data?.protein_g) {
+      totalProtein += activity.nutrition_data.protein_g;
     }
   });
 
-  return Math.round(totalProtein);
+  return totalProtein;
 }
 
 /**
- * Calculate total workout duration in minutes
+ * Calculate workout duration
  */
-export function calculateWorkoutDuration(activities: any[]): number {
+export function calculateWorkoutDuration(activities: HealthActivity[]): number {
   let totalDuration = 0;
 
-  activities.forEach(activity => {
-    if (activity.type === 'workout') {
-      // Check AI analysis duration
-      if (activity.ai_analysis?.duration) {
-        const duration = activity.ai_analysis.duration;
-        if (duration.unit === 'minutes') {
-          totalDuration += duration.value;
-        } else if (duration.unit === 'hours') {
-          totalDuration += duration.value * 60;
-        } else if (duration.unit === 'seconds') {
-          totalDuration += duration.value / 60;
-        }
-      }
-      
-      // Also check exercises array for individual durations
-      if (activity.ai_analysis?.exercises) {
-        activity.ai_analysis.exercises.forEach((exercise: any) => {
-          if (exercise.duration) {
-            if (exercise.duration.unit === 'minutes') {
-              totalDuration += exercise.duration.value;
-            } else if (exercise.duration.unit === 'seconds') {
-              totalDuration += exercise.duration.value / 60;
-            }
-          }
-        });
-      }
+  activities.forEach((activity) => {
+    if (
+      activity.type === "workout" &&
+      activity.activity_data?.duration_minutes
+    ) {
+      totalDuration += activity.activity_data.duration_minutes;
     }
   });
 
-  return Math.round(totalDuration);
+  return totalDuration;
 }
 
 /**
  * Calculate workout calories burned
  */
-export function calculateWorkoutCalories(activities: any[]): number {
+export function calculateWorkoutCalories(
+  activities: { type: string; calories_estimated: number | null }[]
+): number {
   let totalCalories = 0;
 
-  activities.forEach(activity => {
-    if (activity.type === 'workout' && activity.calories_estimated) {
+  activities.forEach((activity) => {
+    if (activity.type === "workout" && activity.calories_estimated) {
       totalCalories += activity.calories_estimated;
     }
   });
@@ -140,11 +111,13 @@ export function calculateWorkoutCalories(activities: any[]): number {
 /**
  * Calculate food calories consumed
  */
-export function calculateFoodCalories(activities: any[]): number {
+export function calculateFoodCalories(
+  activities: { type: string; calories_estimated: number | null }[]
+): number {
   let totalCalories = 0;
 
-  activities.forEach(activity => {
-    if (activity.type === 'meal' && activity.calories_estimated) {
+  activities.forEach((activity) => {
+    if (activity.type === "meal" && activity.calories_estimated) {
       totalCalories += activity.calories_estimated;
     }
   });
@@ -153,41 +126,26 @@ export function calculateFoodCalories(activities: any[]): number {
 }
 
 /**
- * Extract steps from activities (if logged)
- * This is a placeholder for future step tracking implementation
+ * Calculate daily steps
  */
-export function calculateDailySteps(activities: any[]): number {
+export function calculateDailySteps(activities: HealthActivity[]): number {
   let totalSteps = 0;
 
-  activities.forEach(activity => {
-    // Check if activity has step data in activity_data or ai_analysis
-    if (activity.activity_data?.steps) {
+  activities.forEach((activity) => {
+    if (activity.type === "workout" && activity.activity_data?.steps) {
       totalSteps += activity.activity_data.steps;
-    }
-    
-    if (activity.ai_analysis?.steps) {
-      totalSteps += activity.ai_analysis.steps;
-    }
-
-    // Check for walking/running activities with distance to estimate steps
-    if (activity.type === 'workout' && 
-        (activity.ai_analysis?.activityType === 'walking' || 
-         activity.ai_analysis?.activityType === 'running')) {
-      
-      // Rough estimation: 2000 steps per mile, 1.6 km per mile
-      if (activity.ai_analysis.exercises) {
-        activity.ai_analysis.exercises.forEach((exercise: any) => {
-          if (exercise.distance) {
-            if (exercise.distance.unit === 'miles') {
-              totalSteps += exercise.distance.amount * 2000;
-            } else if (exercise.distance.unit === 'km') {
-              totalSteps += exercise.distance.amount * 1250; // approx steps per km
-            }
-          }
-        });
-      }
     }
   });
 
-  return Math.round(totalSteps);
+  return totalSteps;
+}
+
+/**
+ * Check if steps are estimated
+ */
+export function areStepsEstimated(activities: HealthActivity[]): boolean {
+  return activities.some(
+    (activity) =>
+      activity.type === "workout" && activity.activity_data?.steps_estimated
+  );
 }

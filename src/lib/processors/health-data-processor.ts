@@ -119,7 +119,6 @@ export class HealthDataProcessor {
     const calorieDeficit = calculateCalorieDeficit(
       bmr,
       this.profile.activity_level || 'moderately_active',
-      workoutCalories,
       foodCalories
     );
 
@@ -192,7 +191,6 @@ export class HealthDataProcessor {
     const calorieDeficit = this.profile ? calculateCalorieDeficit(
       calculateBMR(this.profile),
       this.profile.activity_level || 'moderately_active',
-      calculateWorkoutCalories(activities),
       calculateFoodCalories(activities)
     ) : 0;
 
@@ -212,7 +210,7 @@ export class HealthDataProcessor {
     
     activities.forEach(activity => {
       if (activity.type === 'meal' && activity.ai_analysis?.foodItems) {
-        activity.ai_analysis.foodItems.forEach((food: any) => {
+        activity.ai_analysis.foodItems.forEach((food: { name: string, macros: { protein: number } }) => {
           if (food.macros?.protein && food.macros.protein > 5) { // At least 5g protein
             sources.add(food.name);
           }
@@ -235,7 +233,7 @@ export class HealthDataProcessor {
           types.add(activity.ai_analysis.activityType);
         }
         if (activity.ai_analysis?.exercises) {
-          activity.ai_analysis.exercises.forEach((exercise: any) => {
+          activity.ai_analysis.exercises.forEach((exercise: { name: string }) => {
             types.add(exercise.name.split(' ')[0]); // First word of exercise name
           });
         }
@@ -309,7 +307,7 @@ export class HealthDataProcessor {
    */
   generateInsights(processedData: DailyProcessedData): string[] {
     const insights: string[] = [];
-    const { metrics, goals } = processedData;
+    const { metrics } = processedData;
 
     // Calorie deficit insights
     if (metrics.calorieDeficit.value > 1000) {
