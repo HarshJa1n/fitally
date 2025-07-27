@@ -74,9 +74,24 @@ export class HealthDataProcessor {
    * Process activities for a specific date
    */
   processDay(date: string): DailyProcessedData {
-    const dayActivities = this.activities.filter(activity => 
-      activity.activity_date.startsWith(date)
-    );
+    // More robust date filtering - handle timezone differences
+    const dayActivities = this.activities.filter(activity => {
+      const activityDate = new Date(activity.activity_date);
+      const targetDate = new Date(date + 'T00:00:00.000Z');
+      
+      // Check if they're the same calendar day in UTC
+      return activityDate.getUTCFullYear() === targetDate.getUTCFullYear() &&
+             activityDate.getUTCMonth() === targetDate.getUTCMonth() &&
+             activityDate.getUTCDate() === targetDate.getUTCDate();
+    });
+    
+    // Debug logging
+    console.log(`Processing date: ${date}`);
+    console.log(`Total activities: ${this.activities.length}`);
+    console.log(`Today's activities: ${dayActivities.length}`);
+    if (dayActivities.length > 0) {
+      console.log('Today\'s activity dates:', dayActivities.map(a => a.activity_date));
+    }
 
     return {
       date,
@@ -141,6 +156,16 @@ export class HealthDataProcessor {
       netCalorieBalance,
       dailyCalorieGoal
     );
+    
+    // Debug calorie calculation
+    console.log('Calorie calculation debug:', {
+      bmr,
+      workoutCaloriesBurned,
+      foodCaloriesConsumed,
+      netCalorieBalance,
+      dailyCalorieGoal,
+      calorieBudget
+    });
 
     // Protein calculations
     const proteinConsumed = calculateDailyProtein(activities);
