@@ -85,13 +85,6 @@ export class HealthDataProcessor {
              activityDate.getUTCDate() === targetDate.getUTCDate();
     });
     
-    // Debug logging
-    console.log(`Processing date: ${date}`);
-    console.log(`Total activities: ${this.activities.length}`);
-    console.log(`Today's activities: ${dayActivities.length}`);
-    if (dayActivities.length > 0) {
-      console.log('Today\'s activity dates:', dayActivities.map(a => a.activity_date));
-    }
 
     return {
       date,
@@ -157,15 +150,6 @@ export class HealthDataProcessor {
       dailyCalorieGoal
     );
     
-    // Debug calorie calculation
-    console.log('Calorie calculation debug:', {
-      bmr,
-      workoutCaloriesBurned,
-      foodCaloriesConsumed,
-      netCalorieBalance,
-      dailyCalorieGoal,
-      calorieBudget
-    });
 
     // Protein calculations
     const proteinConsumed = calculateDailyProtein(activities);

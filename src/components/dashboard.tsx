@@ -252,17 +252,17 @@ export default function Dashboard() {
     return {
       title: `${dayLabel} ${timeLabel}`,
       content: (
-        <div className="flex items-center gap-3 py-2">
-          <span className="text-2xl">
+        <div className="flex items-center gap-2 py-1">
+          <span className="text-lg">
             {activity.type === 'meal' ? '🍽️' : 
              activity.type === 'workout' ? '🏃‍♀️' : 
              activity.type === 'water_intake' ? '💧' : '📝'}
           </span>
-          <div>
-            <h4 className="font-medium">{activity.title}</h4>
-            <p className="text-sm text-muted-foreground">{activity.description}</p>
+          <div className="flex-1">
+            <h4 className="font-medium text-sm">{activity.title}</h4>
+            <p className="text-xs text-muted-foreground truncate">{activity.description}</p>
             {activity.calories_estimated && (
-              <p className="text-xs text-orange-600 font-medium">{activity.calories_estimated} cal</p>
+              <p className="text-xs text-orange-600 font-medium mt-1">{activity.calories_estimated} cal</p>
             )}
           </div>
         </div>
