@@ -9,7 +9,7 @@ SELECT cron.schedule(
   $$ 
   SELECT 
     net.http_post(
-      url := 'https://your-project-ref.supabase.co/functions/v1/meal-reminder-scheduler',
+      url := 'https://brkqcahswbakbhwxxjlt.supabase.co/functions/v1/meal-reminder-scheduler',
       headers := '{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('app.settings.service_role_key') || '"}'::jsonb,
       body := '{}'::jsonb
     ) as request_id;
@@ -24,7 +24,7 @@ SELECT cron.schedule(
   $$ 
   SELECT 
     net.http_post(
-      url := 'https://your-project-ref.supabase.co/functions/v1/meal-reminder-scheduler',
+      url := 'https://brkqcahswbakbhwxxjlt.supabase.co/functions/v1/meal-reminder-scheduler',
       headers := '{"Content-Type": "application/json", "Authorization": "Bearer ' || current_setting('app.settings.service_role_key') || '"}'::jsonb,
       body := '{}'::jsonb
     ) as request_id;
